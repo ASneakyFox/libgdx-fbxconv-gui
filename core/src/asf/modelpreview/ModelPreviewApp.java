@@ -3,6 +3,7 @@ package asf.modelpreview;
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.*;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g3d.*;
 import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute;
 import com.badlogic.gdx.graphics.g3d.environment.DirectionalLight;
@@ -10,6 +11,10 @@ import com.badlogic.gdx.graphics.g3d.loader.G3dModelLoader;
 import com.badlogic.gdx.graphics.g3d.loader.ObjLoader;
 import com.badlogic.gdx.graphics.g3d.utils.CameraInputController;
 import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.badlogic.gdx.scenes.scene2d.ui.Label;
+import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.utils.GdxRuntimeException;
 import com.badlogic.gdx.utils.JsonReader;
 import com.badlogic.gdx.utils.UBJsonReader;
@@ -24,7 +29,12 @@ public class ModelPreviewApp extends ApplicationAdapter {
         public ModelBatch modelBatch;
         public Model model;
         public ModelInstance instance;
-        CameraInputController camController;
+        private CameraInputController camController;
+
+        private Stage stage;
+        private Table table;
+        private ShapeRenderer shapeRenderer;
+        private Label label;
 
         private G3dModelLoader g3dbModelLoader;
         private G3dModelLoader g3djModelLoader;
@@ -32,6 +42,7 @@ public class ModelPreviewApp extends ApplicationAdapter {
 
 
         public void previewFile(File f) throws GdxRuntimeException {
+
                 if(model != null){
                         model.dispose();
                         model = null;
@@ -58,6 +69,12 @@ public class ModelPreviewApp extends ApplicationAdapter {
                 }
 
                 resetCam();
+                label.setText("");
+
+        }
+
+        public void showLoadingText(){
+                label.setText("Loading...");
 
         }
 
@@ -72,6 +89,24 @@ public class ModelPreviewApp extends ApplicationAdapter {
 
                 camController = new CameraInputController(null);
                 Gdx.input.setInputProcessor(camController);
+
+                stage = new Stage();
+                table = new Table();
+                table.setFillParent(true);
+                stage.addActor(table);
+                shapeRenderer = new ShapeRenderer();
+
+
+                //FreeTypeFontGenerator generator = new FreeTypeFontGenerator(fontFile);
+                //BitmapFont font15 = generator.generateFont(15);
+                //BitmapFont font22 = generator.generateFont(22);
+                //generator.dispose();
+
+                BitmapFont font = new BitmapFont();
+                font.setScale(10);
+                label = new Label("", new Label.LabelStyle(font, Color.BLACK));
+                table.add(label);
+
 
                 try{
                         previewFile(null);
@@ -101,6 +136,10 @@ public class ModelPreviewApp extends ApplicationAdapter {
                         modelBatch.render(instance, environmentLightingEnabled ? environment : null);
                         modelBatch.end();
                 }
+
+                stage.draw();
+
+                table.drawDebug(shapeRenderer);
 	}
 
         private void resetCam(){
@@ -119,6 +158,7 @@ public class ModelPreviewApp extends ApplicationAdapter {
         public void resize(int width, int height) {
                 super.resize(width, height);
                 resetCam();
+                stage.getViewport().update(width, height, true);
         }
 
         @Override
@@ -126,5 +166,7 @@ public class ModelPreviewApp extends ApplicationAdapter {
                 modelBatch.dispose();
                 if(model != null)
                         model.dispose();
+                stage.dispose();
+                shapeRenderer.dispose();
         }
 }

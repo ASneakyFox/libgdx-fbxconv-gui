@@ -1,54 +1,35 @@
 package asf.modelpreview.desktop;
 
+import asf.modelpreview.ModelPreviewApp;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.backends.lwjgl.LwjglAWTCanvas;
-import asf.modelpreview.ModelPreviewApp;
 import com.badlogic.gdx.utils.GdxRuntimeException;
 
 import javax.swing.BoxLayout;
-import javax.swing.JButton;
-import javax.swing.JCheckBox;
-import javax.swing.JComboBox;
-import javax.swing.JFileChooser;
 import javax.swing.JFrame;
-import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.JSpinner;
 import javax.swing.JTabbedPane;
-import javax.swing.JTextField;
 import javax.swing.JTextPane;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
-import javax.swing.filechooser.FileFilter;
-import javax.swing.plaf.basic.BasicFileChooserUI;
 import java.awt.BorderLayout;
 import java.awt.Container;
 import java.awt.Dimension;
-import java.awt.FlowLayout;
 import java.awt.Toolkit;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.ItemEvent;
-import java.awt.event.ItemListener;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.util.Arrays;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.prefs.Preferences;
 
 public class DesktopLauncher {
 
-	public static void main (String[] arg) {
+        public static void main(String[] arg) {
 
                 SwingUtilities.invokeLater(new Runnable() {
                         @Override
@@ -56,7 +37,7 @@ public class DesktopLauncher {
                                 new DesktopLauncher();
                         }
                 });
-	}
+        }
 
         public final Preferences prefs;
         private final ExecutorService threadPool;
@@ -86,13 +67,12 @@ public class DesktopLauncher {
         private static final String B_environmentLighting = "B_environmentLighting";
 
 
-
         public DesktopLauncher() {
                 prefs = Preferences.userRoot().node("LibGDXModelPreviewUtility");
 
 
                 threadPool = Executors.newCachedThreadPool();
-                Runtime.getRuntime().addShutdownHook(new Thread(){
+                Runtime.getRuntime().addShutdownHook(new Thread() {
                         @Override
                         public void run() {
                                 System.out.println("Shutdown Now");
@@ -116,7 +96,7 @@ public class DesktopLauncher {
 
                 frame = new JFrame("LibGDX Model Preview Utility");
 
-                frame. setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+                frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
                 final Container container = frame.getContentPane();
                 container.setLayout(new BorderLayout());
 
@@ -130,7 +110,7 @@ public class DesktopLauncher {
                                 modelPreviewApp = new ModelPreviewApp();
                                 modelPreviewApp.backgroundColor.set(100 / 255f, 149 / 255f, 237 / 255f, 1f);
                                 LwjglAWTCanvas canvas = new LwjglAWTCanvas(modelPreviewApp);
-                                centerTabbedPane.addTab("3D Preview",null,canvas.getCanvas(),"3D Preview");
+                                centerTabbedPane.addTab("3D Preview", null, canvas.getCanvas(), "3D Preview");
                         }
 
 
@@ -148,7 +128,6 @@ public class DesktopLauncher {
                                 JScrollPane scrollPane = new JScrollPane(outputTextPane);
                                 centerTabbedPane.addTab("Output Console", null, scrollPane, "Output");
                         }
-
 
 
                 }
@@ -177,23 +156,22 @@ public class DesktopLauncher {
                                 {
                                         JPanel configPanel = new JPanel();
                                         configPanel.setLayout(new BoxLayout(configPanel, BoxLayout.PAGE_AXIS));
-                                        westLowerToolPane.addTab("Configuration",null,configPanel,"Configure fbx-conv");
+                                        westLowerToolPane.addTab("Configuration", null, configPanel, "Configure fbx-conv");
 
                                         fbxConvLocationBox = new FileChooserFbxConv(this, S_fbxConvLocation, configPanel);
 
-                                        flipTextureCoords = new BooleanConfigPanel(this,B_flipVTextureCoords,configPanel,
+                                        flipTextureCoords = new BooleanConfigPanel(this, B_flipVTextureCoords, configPanel,
                                                 "Flip V Texture Coordinates", false);
-                                        packVertexColors = new BooleanConfigPanel(this,B_packVertexColorsToOneFloat,configPanel,
+                                        packVertexColors = new BooleanConfigPanel(this, B_packVertexColorsToOneFloat, configPanel,
                                                 "Pack vertex colors to one float", false);
-                                        maxVertxPanel = new NumberConfigPanel(this, I_maxVertPerMesh,configPanel,
-                                                "Max Verticies per mesh (k)",32,1,50,1);
-                                        maxBonesPanel = new NumberConfigPanel(this,I_maxBonePerNodepart, configPanel,
-                                                "Max Bones per nodepart",12,1,50,1);
-                                        maxBonesWeightsPanel = new NumberConfigPanel(this,I_maxBoneWeightPerVertex, configPanel,
-                                                "Max Bone Weights per vertex",4,1,50,1);
-                                        outputFileTypeBox = new ComboStringConfigPanel(this,S_outputFileType,configPanel,
-                                                "Output Format","G3DB",new String[]{"G3DB","G3DJ"});
-
+                                        maxVertxPanel = new NumberConfigPanel(this, I_maxVertPerMesh, configPanel,
+                                                "Max Verticies per mesh (k)", 32, 1, 50, 1);
+                                        maxBonesPanel = new NumberConfigPanel(this, I_maxBonePerNodepart, configPanel,
+                                                "Max Bones per nodepart", 12, 1, 50, 1);
+                                        maxBonesWeightsPanel = new NumberConfigPanel(this, I_maxBoneWeightPerVertex, configPanel,
+                                                "Max Bone Weights per vertex", 4, 1, 50, 1);
+                                        outputFileTypeBox = new ComboStringConfigPanel(this, S_outputFileType, configPanel,
+                                                "Output Format", "G3DB", new String[]{"G3DB", "G3DJ"});
 
 
                                 }
@@ -201,10 +179,10 @@ public class DesktopLauncher {
                                 {
 
                                         JPanel viewportSettingsPanel = new JPanel();
-                                        westLowerToolPane.addTab("Viewport Settings",null,viewportSettingsPanel,"Viewport Settings");
+                                        westLowerToolPane.addTab("Viewport Settings", null, viewportSettingsPanel, "Viewport Settings");
 
-                                        environmentLightingBox = new BooleanConfigPanel(this, B_environmentLighting,viewportSettingsPanel,
-                                                "Environment Lighting", true){
+                                        environmentLightingBox = new BooleanConfigPanel(this, B_environmentLighting, viewportSettingsPanel,
+                                                "Environment Lighting", true) {
                                                 @Override
                                                 protected void onChange() {
                                                         modelPreviewApp.environmentLightingEnabled = isSelected();
@@ -217,20 +195,12 @@ public class DesktopLauncher {
                 }
 
 
-
-
-
-
-
-
-
-
                 frame.pack();
 
                 Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
                 int height = screenSize.height;
                 int width = screenSize.width;
-                frame.setSize(Math.round(width*.75f), Math.round(height*.75f));
+                frame.setSize(Math.round(width * .75f), Math.round(height * .75f));
                 frame.setLocationRelativeTo(null);
 
                 frame.setVisible(true);
@@ -239,20 +209,20 @@ public class DesktopLauncher {
         }
 
 
-        private void logText(final String text){
+        private void logText(final String text) {
                 SwingUtilities.invokeLater(new Runnable() {
                         @Override
                         public void run() {
-                                if(outputTextPane == null){
+                                if (outputTextPane == null) {
                                         System.out.println(text);
                                         return;
                                 }
-                                outputTextPane.setText(outputTextPane.getText()+"\n"+text);
+                                outputTextPane.setText(outputTextPane.getText() + "\n" + text);
                         }
                 });
         }
 
-        private void logTextError(Exception e){
+        private void logTextError(Exception e) {
 
                 StringWriter sw = new StringWriter();
                 PrintWriter pw = new PrintWriter(sw);
@@ -260,32 +230,36 @@ public class DesktopLauncher {
                 logTextError(sw.toString());
         }
 
-        private void logTextError(final String text){
+        private void logTextError(final String text) {
                 SwingUtilities.invokeLater(new Runnable() {
                         @Override
                         public void run() {
-                                if(outputTextPane == null){
+                                if (outputTextPane == null) {
                                         System.err.println(text);
                                         return;
                                 }
-                                outputTextPane.setText(outputTextPane.getText()+"\n"+text);
+                                outputTextPane.setText(outputTextPane.getText() + "\n" + text);
                                 centerTabbedPane.setSelectedIndex(2);
                         }
                 });
         }
 
 
+        protected void previewFile(final File f) {
 
 
-
-
-        protected void previewFile(final File f){
                 threadPool.submit(new Callable<Void>() {
                         @Override
                         public Void call() throws Exception {
-                                // TODO: send something to the modelPreviewApp so itll show a loading message
+                                Gdx.app.postRunnable(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                                modelPreviewApp.showLoadingText();
+                                        }
+                                });
 
-                                final File newF= convertFile(f, true);
+
+                                final File newF = convertFile(f, true);
                                 Gdx.app.postRunnable(new Runnable() {
                                         @Override
                                         public void run() {
@@ -310,28 +284,42 @@ public class DesktopLauncher {
                 });
         }
 
-        private File convertFile(File f, boolean temp){
+        private File convertFile(File f, boolean temp) {
+                if(f == null || f.isDirectory()){
+                        return null; // not a model file
+                }
                 String srcPath = f.getAbsolutePath();
                 String srcLower = srcPath.toLowerCase();
-                if(srcLower.endsWith(".g3db") || srcLower.endsWith(".g3dj")){
+                if (srcLower.endsWith(".g3db") || srcLower.endsWith(".g3dj")) {
                         return f; // Already in desirable format, return the same file
                 }
 
-                if(!fbxConvLocationBox.hasValidValue()){
-                        throw new IllegalStateException("fbx-conv is not yet configured.");
+                if (!fbxConvLocationBox.hasValidValue()) {
+                        logTextError("Can not convert file, fbx-conv location is not yet configured.");
+                        return null;
                 }
 
                 File targetDir = f.getParentFile();
-
-                String dstPath =  targetDir+fbxConvLocationBox.dirSeperator+ (temp ?"libgdx-model-viewer.temp.g3dj": stripExtension(f.getName()));
+                String dstExtension = temp || outputFileTypeBox.getValue().equals("G3DJ") ? ".g3dj" : ".g3db";
+                String dstPath = targetDir + fbxConvLocationBox.dirSeperator + (temp ? "libgdx-model-viewer.temp" : stripExtension(f.getName())) + dstExtension;
                 File convertedFile = new File(dstPath);
-
                 try {
                         logText("-----------------------------------");
-                        String[] s = new String[]{fbxConvLocationBox.getName(), "-v", f.getName(), convertedFile.getName()};
-                        ProcessBuilder p =new ProcessBuilder(fbxConvLocationBox.getAbsolutePath(),"-v",srcPath,dstPath);
+                        ProcessBuilder p = new ProcessBuilder(fbxConvLocationBox.getAbsolutePath(),"-v");
+                        if(flipTextureCoords.isSelected())
+                                p.command().add("-f");
+                        if(packVertexColors.isSelected())
+                                p.command().add("-p");
+                        p.command().add("-m");
+                        p.command().add(maxVertxPanel.getString());
+                        p.command().add("-b");
+                        p.command().add(maxBonesPanel.getString());
+                        p.command().add("-w");
+                        p.command().add(maxBonesWeightsPanel.getString());
+                        p.command().add(srcPath);
+                        p.command().add(dstPath);
 
-                        logText(stringArrayToString(s) + "\n");
+                        logText(shortenCommand(p.command(), fbxConvLocationBox.getName(), f.getName(), convertedFile.getName()) + "\n");
                         String output = processOutput(p.start());
                         logText(output);
                 } catch (IOException e) {
@@ -342,21 +330,32 @@ public class DesktopLauncher {
                 return convertedFile;
         }
 
-        private static String stripExtension (String str) {
+        private static String stripExtension(String str) {
                 if (str == null) return null;
                 int pos = str.lastIndexOf(".");
                 if (pos == -1) return str;
                 return str.substring(0, pos);
         }
 
-        private static String stringArrayToString(String[] stringArray){
-                if(stringArray == null || stringArray.length==0)
-                        return "";
-                String output="";
-                for (String s : stringArray) {
-                        output+=s+" ";
+        private static String shortenCommand(List<String> command, String shortExecName, String shortSrcName, String shortDstName){
+                String output = shortExecName + " ";
+                for (int i = 1; i < command.size()-2; i++) {
+                        output += command.get(i) + " ";
                 }
-                return output.substring(0, output.length()-1);
+                return output+" "+shortSrcName+" "+shortDstName;
+        }
+
+        private static String stringArrayToString(String[] stringArray) {
+                if (stringArray == null || stringArray.length == 0)
+                        return "";
+                String output = "";
+                for (String s : stringArray) {
+                        if (s == null || s.isEmpty()) {
+                                continue;
+                        }
+                        output += s + " ";
+                }
+                return output.substring(0, output.length() - 1);
         }
 
         protected static String processOutput(Process proc) throws java.io.IOException {
@@ -365,8 +364,7 @@ public class DesktopLauncher {
                 String val = "";
                 if (s.hasNext()) {
                         val = s.next();
-                }
-                else {
+                } else {
                         val = "";
                 }
                 return val;

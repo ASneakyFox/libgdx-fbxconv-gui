@@ -54,4 +54,7 @@ public class NumberConfigPanel {
         public int getValue(){
                 return spinnerModel.getNumber().intValue();
         }
+        public String getString(){
+                return String.valueOf(getValue());
+        }
 }
