@@ -2,19 +2,14 @@ package asf.modelpreview;
 
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.assets.AssetDescriptor;
-import com.badlogic.gdx.assets.AssetManager;
-import com.badlogic.gdx.assets.loaders.ModelLoader;
 import com.badlogic.gdx.graphics.*;
 import com.badlogic.gdx.graphics.g3d.*;
 import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute;
 import com.badlogic.gdx.graphics.g3d.environment.DirectionalLight;
 import com.badlogic.gdx.graphics.g3d.loader.G3dModelLoader;
 import com.badlogic.gdx.graphics.g3d.loader.ObjLoader;
-import com.badlogic.gdx.graphics.g3d.particles.influencers.ModelInfluencer;
 import com.badlogic.gdx.graphics.g3d.utils.CameraInputController;
 import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder;
-import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.utils.GdxRuntimeException;
 import com.badlogic.gdx.utils.JsonReader;
 import com.badlogic.gdx.utils.UBJsonReader;
@@ -24,18 +19,19 @@ import java.io.File;
 public class ModelPreviewApp extends ApplicationAdapter {
         public PerspectiveCamera cam;
         public Environment environment;
-        public boolean environmentLightingEnabled = true;
+        public volatile boolean environmentLightingEnabled = true;
         public final Color backgroundColor = new Color(0,0,0,1);
         public ModelBatch modelBatch;
         public Model model;
         public ModelInstance instance;
         CameraInputController camController;
 
-        private G3dModelLoader g3dModelLoader;
+        private G3dModelLoader g3dbModelLoader;
+        private G3dModelLoader g3djModelLoader;
         private ObjLoader objLoader;
 
 
-        public void previewFile(File f)throws GdxRuntimeException {
+        public void previewFile(File f) throws GdxRuntimeException {
                 if(model != null){
                         model.dispose();
                         model = null;
@@ -50,10 +46,13 @@ public class ModelPreviewApp extends ApplicationAdapter {
                         instance = new ModelInstance(model);
                 }else{
                         String absolutePath = f.getAbsolutePath();
+                        //System.out.println("abs path: "+absolutePath);
                         if(absolutePath.toLowerCase().endsWith("obj")){
                                 model = objLoader.loadModel(Gdx.files.absolute(absolutePath));
+                        }else if(absolutePath.toLowerCase().endsWith("g3dj")){
+                                model = g3djModelLoader.loadModel(Gdx.files.absolute(absolutePath));
                         }else{
-                                model = g3dModelLoader.loadModel(Gdx.files.absolute(absolutePath));
+                                model = g3dbModelLoader.loadModel(Gdx.files.absolute(absolutePath));
                         }
                         instance = new ModelInstance(model);
                 }
@@ -66,7 +65,8 @@ public class ModelPreviewApp extends ApplicationAdapter {
 	@Override
 	public void create () {
                 objLoader = new ObjLoader();
-                g3dModelLoader = new G3dModelLoader(new UBJsonReader());
+                g3dbModelLoader = new G3dModelLoader(new UBJsonReader());
+                g3djModelLoader = new G3dModelLoader(new JsonReader());
 
                 modelBatch = new ModelBatch();
 
@@ -76,7 +76,7 @@ public class ModelPreviewApp extends ApplicationAdapter {
                 try{
                         previewFile(null);
                 }catch(GdxRuntimeException e){
-
+                        e.printStackTrace();
                 }
 
 

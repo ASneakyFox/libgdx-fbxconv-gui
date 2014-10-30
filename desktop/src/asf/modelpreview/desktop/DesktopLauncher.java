@@ -3,23 +3,47 @@ package asf.modelpreview.desktop;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.backends.lwjgl.LwjglAWTCanvas;
 import asf.modelpreview.ModelPreviewApp;
-import com.badlogic.gdx.graphics.*;
-import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.utils.GdxRuntimeException;
-import javafx.stage.FileChooser;
 
-
-import javax.swing.*;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
+import javax.swing.JFileChooser;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JSpinner;
+import javax.swing.JTabbedPane;
+import javax.swing.JTextField;
+import javax.swing.JTextPane;
+import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
 import javax.swing.filechooser.FileFilter;
-import javax.swing.filechooser.FileView;
 import javax.swing.plaf.basic.BasicFileChooserUI;
-import java.awt.*;
-import java.awt.event.*;
+import java.awt.BorderLayout;
+import java.awt.Container;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Toolkit;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.ItemEvent;
+import java.awt.event.ItemListener;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.prefs.Preferences;
 
 public class DesktopLauncher {
@@ -34,21 +58,49 @@ public class DesktopLauncher {
                 });
 	}
 
-        private Preferences prefs;
-        private JFrame frame;
-        private JFileChooser fileChooser;
-        private JCheckBox automaticPreviewBox;
+        public final Preferences prefs;
+        private final ExecutorService threadPool;
+        protected final JFrame frame;
+        private FileChooserSideBar fileChooser;
+
+        private FileChooserFbxConv fbxConvLocationBox;
+        private BooleanConfigPanel flipTextureCoords, packVertexColors;
+        private NumberConfigPanel maxVertxPanel, maxBonesPanel, maxBonesWeightsPanel;
+        private ComboStringConfigPanel outputFileTypeBox;
+        private BooleanConfigPanel environmentLightingBox;
+        private JTabbedPane centerTabbedPane, westLowerToolPane;
         private JTextPane outputTextPane;
         private BasicFileFilter[] fileFilters;
         private ModelPreviewApp modelPreviewApp;
 
-        private static final String S_folderLocation = "S_folderLocation";
+        protected static final String S_folderLocation = "S_folderLocation";
+        protected static final String I_fileFilter = "I_fileFilter";
+        protected static final String B_automaticPreview = "B_automaticPreview";
         private static final String S_fbxConvLocation = "S_fbxConvLocation";
+        private static final String B_flipVTextureCoords = "B_flipVTextureCoords";
+        private static final String B_packVertexColorsToOneFloat = "B_packVertexColorsToOneFloat";
+        private static final String I_maxVertPerMesh = "I_maxVertPerMesh";
+        private static final String I_maxBonePerNodepart = "I_maxBonePerNodepart";
+        private static final String I_maxBoneWeightPerVertex = "I_maxBoneWeightPerVertex";
+        private static final String S_outputFileType = "S_outputFileType";
         private static final String B_environmentLighting = "B_environmentLighting";
-        private static final String B_automaticPreview = "B_automaticPreview";
-        private static final String I_fileFilter = "I_fileFilter";
+
+
 
         public DesktopLauncher() {
+                prefs = Preferences.userRoot().node("LibGDXModelPreviewUtility");
+
+
+                threadPool = Executors.newCachedThreadPool();
+                Runtime.getRuntime().addShutdownHook(new Thread(){
+                        @Override
+                        public void run() {
+                                System.out.println("Shutdown Now");
+                                threadPool.shutdownNow();
+                        }
+                });
+
+
                 try {
                         for (UIManager.LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
                                 if ("Nimbus".equals(info.getName())) {
@@ -61,286 +113,113 @@ public class DesktopLauncher {
                 }
                 UIManager.put("FileChooser.readOnly", Boolean.TRUE);
 
-                prefs = Preferences.userRoot().node("LibGDXModelPreviewUtility");
+
                 frame = new JFrame("LibGDX Model Preview Utility");
 
                 frame. setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
                 final Container container = frame.getContentPane();
                 container.setLayout(new BorderLayout());
 
-                modelPreviewApp = new ModelPreviewApp();
-                modelPreviewApp.backgroundColor.set(100 / 255f, 149 / 255f, 237 / 255f, 1f);
-
-                LwjglAWTCanvas canvas = new LwjglAWTCanvas(modelPreviewApp);
-                container.add(canvas.getCanvas(), BorderLayout.CENTER);
-
-                JPanel westBasePanel = new JPanel(new BorderLayout());
-                container.add(westBasePanel, BorderLayout.WEST);
-
-                JPanel westUpperFileBrowsingPanel = new JPanel(new BorderLayout());
-                westBasePanel.add(westUpperFileBrowsingPanel, BorderLayout.NORTH);
+                // center tabbed pane
                 {
+                        centerTabbedPane = new JTabbedPane();
+                        container.add(centerTabbedPane, BorderLayout.CENTER);
 
-
-                        fileChooser = new JFileChooser();
-                        westUpperFileBrowsingPanel.add(fileChooser, BorderLayout.CENTER);
-                        fileChooser.setDialogTitle("Choose Assets Directory");
-                        fileChooser.setDialogType(JFileChooser.CUSTOM_DIALOG);
-                        fileChooser.setControlButtonsAreShown(false);
-                        fileChooser.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
-                        fileChooser.setAcceptAllFileFilterUsed(true);
-                        fileChooser.setFileHidingEnabled(true);
-                        fileChooser.setAcceptAllFileFilterUsed(false);
-                        BasicFileChooserUI ui = (BasicFileChooserUI) fileChooser.getUI();
-                        ui.getNewFolderAction().setEnabled(false);
-                        fileFilters = new BasicFileFilter[]{
-                                new BasicFileFilter("Autodesk *.fbx",".fbx"),
-                                new BasicFileFilter("Wavefront *.obj", ".obj"),
-                                new BasicFileFilter("Collada *.dae",".dae"),
-                                new BasicFileFilter("LibGDX 3D Binary *.g3db",".g3db"),
-                                new BasicFileFilter("LibGDX 3D Json *.g3dj",".g3dj"),
-                                new BasicFileFilter("All Compatible LibGDX Files",".obj",".fbx",".dae",".g3db",".g3dj")
-                        };
-                        for (BasicFileFilter fileFilter : fileFilters) {
-                                fileChooser.addChoosableFileFilter(fileFilter);
-                        }
-                        int prefFileFilter = prefs.getInt(I_fileFilter,fileFilters.length-1);
-                        if(prefFileFilter <0 || prefFileFilter >= fileFilters.length){
-                                prefFileFilter = fileFilters.length-1;
-                        }
-                        fileChooser.setFileFilter(fileFilters[prefFileFilter]);
-                        fileChooser.addPropertyChangeListener("fileFilterChanged",new PropertyChangeListener() {
-                                @Override
-                                public void propertyChange(PropertyChangeEvent evt) {
-
-                                        for (int i = 0; i < fileFilters.length; i++) {
-                                                if(fileFilters[i] == evt.getNewValue()){
-                                                        prefs.putInt(I_fileFilter,i);
-                                                        return;
-                                                }
-                                        }
-                                }
-                        });
-
-
-
-                        String loc = prefs.get(S_folderLocation,null);
-                        if(loc != null)
-                                fileChooser.setCurrentDirectory(new File(loc));
-
-                        fileChooser.addPropertyChangeListener("directoryChanged",new PropertyChangeListener() {
-                                @Override
-                                public void propertyChange(PropertyChangeEvent evt) {
-                                        File newVal = (File)evt.getNewValue();
-                                        prefs.put(S_folderLocation,newVal.getAbsolutePath());
-                                }
-                        });
-
-                        fileChooser.addPropertyChangeListener("SelectedFileChangedProperty", new PropertyChangeListener() {
-                                @Override
-                                public void propertyChange(PropertyChangeEvent evt) {
-                                        if(!automaticPreviewBox.isSelected())
-                                            return;
-
-                                        previewFile((File)evt.getNewValue());
-                                }
-                        });
-
-                        //fileChooser.setAccessory(new JButton("convert"));
-
+                        // 3D Preview
                         {
-                                JPanel westSouthPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-                                westUpperFileBrowsingPanel.add(westSouthPanel, BorderLayout.SOUTH);
-
-                                automaticPreviewBox = new JCheckBox("Automatic Preview");
-                                westSouthPanel.add(automaticPreviewBox);
-                                automaticPreviewBox.setSelected(prefs.getBoolean(B_automaticPreview,false));
-
-                                automaticPreviewBox.addItemListener(new ItemListener() {
-                                        @Override
-                                        public void itemStateChanged(ItemEvent e) {
-                                                prefs.putBoolean(B_automaticPreview, automaticPreviewBox.isSelected());
-                                        }
-                                });
-
-
-                                JButton previewFileButton = new JButton("Preview File");
-                                westSouthPanel.add(previewFileButton);
-                                previewFileButton.addActionListener(new ActionListener() {
-                                        @Override
-                                        public void actionPerformed(final ActionEvent e) {
-                                                previewFile(fileChooser.getSelectedFile());
-                                        }
-                                });
-
+                                modelPreviewApp = new ModelPreviewApp();
+                                modelPreviewApp.backgroundColor.set(100 / 255f, 149 / 255f, 237 / 255f, 1f);
+                                LwjglAWTCanvas canvas = new LwjglAWTCanvas(modelPreviewApp);
+                                centerTabbedPane.addTab("3D Preview",null,canvas.getCanvas(),"3D Preview");
                         }
 
+
+                        // G3DJ viewer
+                        {
+                                JTextPane g3djTextView = new JTextPane();
+                                JScrollPane scrollPane = new JScrollPane(g3djTextView);
+                                centerTabbedPane.addTab("G3DJ", null, scrollPane, "View the G3DJ file");
+                        }
+
+
+                        // Output Console
+                        {
+                                outputTextPane = new JTextPane();
+                                JScrollPane scrollPane = new JScrollPane(outputTextPane);
+                                centerTabbedPane.addTab("Output Console", null, scrollPane, "Output");
+                        }
+
+
+
+                }
+
+                // Left Side Tool Bar
+                {
+                        JPanel westBasePanel = new JPanel(new BorderLayout());
+                        container.add(westBasePanel, BorderLayout.WEST);
+
+                        JPanel westUpperFileBrowsingPanel = new JPanel(new BorderLayout());
+                        westBasePanel.add(westUpperFileBrowsingPanel, BorderLayout.NORTH);
+
+
+                        // Source File File Chooser
+                        {
+                                fileChooser = new FileChooserSideBar(this, westUpperFileBrowsingPanel);
+                        }
+
+
+                        // File Conversion and File Preview Settings
+                        {
+                                westLowerToolPane = new JTabbedPane();
+                                westBasePanel.add(westLowerToolPane, BorderLayout.CENTER);
+                                westLowerToolPane.setTabPlacement(JTabbedPane.TOP);
+                                // fbx-conv Configuration
+                                {
+                                        JPanel configPanel = new JPanel();
+                                        configPanel.setLayout(new BoxLayout(configPanel, BoxLayout.PAGE_AXIS));
+                                        westLowerToolPane.addTab("Configuration",null,configPanel,"Configure fbx-conv");
+
+                                        fbxConvLocationBox = new FileChooserFbxConv(this, S_fbxConvLocation, configPanel);
+
+                                        flipTextureCoords = new BooleanConfigPanel(this,B_flipVTextureCoords,configPanel,
+                                                "Flip V Texture Coordinates", false);
+                                        packVertexColors = new BooleanConfigPanel(this,B_packVertexColorsToOneFloat,configPanel,
+                                                "Pack vertex colors to one float", false);
+                                        maxVertxPanel = new NumberConfigPanel(this, I_maxVertPerMesh,configPanel,
+                                                "Max Verticies per mesh (k)",32,1,50,1);
+                                        maxBonesPanel = new NumberConfigPanel(this,I_maxBonePerNodepart, configPanel,
+                                                "Max Bones per nodepart",12,1,50,1);
+                                        maxBonesWeightsPanel = new NumberConfigPanel(this,I_maxBoneWeightPerVertex, configPanel,
+                                                "Max Bone Weights per vertex",4,1,50,1);
+                                        outputFileTypeBox = new ComboStringConfigPanel(this,S_outputFileType,configPanel,
+                                                "Output Format","G3DB",new String[]{"G3DB","G3DJ"});
+
+
+
+                                }
+                                // Viewport Settings
+                                {
+
+                                        JPanel viewportSettingsPanel = new JPanel();
+                                        westLowerToolPane.addTab("Viewport Settings",null,viewportSettingsPanel,"Viewport Settings");
+
+                                        environmentLightingBox = new BooleanConfigPanel(this, B_environmentLighting,viewportSettingsPanel,
+                                                "Environment Lighting", true){
+                                                @Override
+                                                protected void onChange() {
+                                                        modelPreviewApp.environmentLightingEnabled = isSelected();
+                                                }
+                                        };
+
+                                }
+
+                        }
                 }
 
 
 
 
-                JTabbedPane westLowerToolPane = new JTabbedPane();
-                westBasePanel.add(westLowerToolPane, BorderLayout.CENTER);
 
-                {
-                        westLowerToolPane.setTabPlacement(JTabbedPane.TOP);
-                        // Configuration
-                        {
-                                JPanel configPanel = new JPanel();
-                                configPanel.setLayout(new BoxLayout(configPanel, BoxLayout.PAGE_AXIS));
-                                westLowerToolPane.addTab("Configuration",null,configPanel,"Configure fbx-conv");
-
-                                {
-                                        JPanel fbxConvToolBrowsePanel = new JPanel();
-                                        configPanel.add(fbxConvToolBrowsePanel);
-
-                                        final JTextField fbxConvLocationField = new JTextField();
-                                        fbxConvToolBrowsePanel.add(fbxConvLocationField);
-                                        String fbxConvLocation = prefs.get(S_fbxConvLocation, null);
-                                        fbxConvLocationField.setText(fbxConvLocation!= null ? fbxConvLocation : "YOU MUST SET THE FBX-CONV LOCATION");
-                                        fbxConvLocationField.setEnabled(false);
-
-                                        final JFileChooser fbxConvFileChooser = new JFileChooser();
-                                        if(fbxConvLocation != null)
-                                                fbxConvFileChooser.setCurrentDirectory(new File(fbxConvLocation));
-                                        fbxConvFileChooser.setDialogTitle("Find the file: fbx-conv-win32.exe");
-                                        fbxConvFileChooser.setDragEnabled(false);
-                                        fbxConvFileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
-                                        fbxConvFileChooser.setAcceptAllFileFilterUsed(false);
-                                        fbxConvFileChooser.setFileFilter(new FileFilter() {
-                                                @Override
-                                                public boolean accept(File f) {
-                                                        if(f.isDirectory())
-                                                                return true;
-                                                        String name = f.getName().toLowerCase();
-                                                        return (name.endsWith("fbx-conv-win32.exe") || name.endsWith("fbx-conv-lin64") || name.endsWith("fbx-conv-mac")) && isValidFbxConvFileLocation(f);
-                                                }
-
-                                                @Override
-                                                public String getDescription() {
-                                                        return "fbx-conv-win32.exe";
-                                                }
-                                        });
-
-                                        JButton browseFbxConvButton = new JButton("Browse...");
-                                        browseFbxConvButton.addActionListener(new ActionListener() {
-                                                @Override
-                                                public void actionPerformed(ActionEvent e) {
-                                                        int returnVal = fbxConvFileChooser.showOpenDialog(frame);
-
-                                                        if (returnVal == JFileChooser.APPROVE_OPTION) {
-                                                                File f = fbxConvFileChooser.getSelectedFile();
-                                                                fbxConvLocationField.setText(f.getAbsolutePath());
-                                                                prefs.put(S_fbxConvLocation, f.getAbsolutePath());
-                                                        } else {
-
-                                                        }
-                                                }
-                                        });
-                                        fbxConvToolBrowsePanel.add(browseFbxConvButton);
-                                }
-
-
-                                JCheckBox flipTextureCoords = new JCheckBox("Flip V Texture Coordinates");
-                                configPanel.add(flipTextureCoords);
-
-                                JCheckBox packVertexColors = new JCheckBox("Pack vertex colors to one float");
-                                configPanel.add(packVertexColors);
-
-                                {
-                                        JPanel maxVertsPanel = new JPanel();
-                                        configPanel.add(maxVertsPanel);
-
-                                        JLabel maxVertsLabel = new JLabel("Max Verticies per mesh (k)");
-                                        maxVertsPanel.add(maxVertsLabel);
-
-                                        final JSpinner maxVertsSpinner = new JSpinner();
-                                        maxVertsSpinner.setValue(32);
-                                        maxVertsPanel.add(maxVertsSpinner);
-
-                                        JButton resetToDefault = new JButton("Reset To Default");
-                                        maxVertsPanel.add(resetToDefault);
-                                }
-
-                                {
-                                        JPanel maxBonesPanel = new JPanel();
-                                        configPanel.add(maxBonesPanel);
-
-                                        JLabel maxBonesLabel = new JLabel("Max Bones per nodepart");
-                                        maxBonesPanel.add(maxBonesLabel);
-
-                                        final JSpinner maxBonesSpinner = new JSpinner();
-                                        maxBonesSpinner.setValue(12);
-                                        maxBonesPanel.add(maxBonesSpinner);
-
-                                        JButton resetToDefault = new JButton("Reset To Default");
-                                        maxBonesPanel.add(resetToDefault);
-                                }
-
-                                {
-                                        JPanel maxBoneWeightsPanel = new JPanel();
-                                        configPanel.add(maxBoneWeightsPanel);
-
-                                        JLabel maxBonesLabel = new JLabel("Max Bone Weights per vertex");
-                                        maxBoneWeightsPanel.add(maxBonesLabel);
-
-                                        final JSpinner maxBoneWeights = new JSpinner();
-                                        maxBoneWeights.setValue(4);
-                                        maxBoneWeightsPanel.add(maxBoneWeights);
-
-                                        JButton resetToDefault = new JButton("Reset To Default");
-                                        maxBoneWeightsPanel.add(resetToDefault);
-                                }
-
-                                {
-                                        JPanel outputFormatPanel = new JPanel();
-                                        configPanel.add(outputFormatPanel);
-
-                                        JLabel maxBonesLabel = new JLabel("Output Format");
-                                        outputFormatPanel.add(maxBonesLabel);
-
-                                        JComboBox outFileTypeBox = new JComboBox();
-                                        outFileTypeBox.setEditable(false);
-                                        outFileTypeBox.addItem("G3DB");
-                                        outFileTypeBox.addItem("G3DJ");
-                                        outputFormatPanel.add(outFileTypeBox);
-                                }
-
-
-
-
-
-
-
-                        }
-                        // Viewport Settings
-                        {
-                                JPanel viewportSettingsPanel = new JPanel();
-                                westLowerToolPane.addTab("Viewport Settings",null,viewportSettingsPanel,"Viewport Settings");
-                                final JCheckBox environmentLightingBox = new JCheckBox("Environment Lighting");
-                                viewportSettingsPanel.add(environmentLightingBox);
-                                environmentLightingBox.setSelected(prefs.getBoolean(B_environmentLighting,false));
-                                modelPreviewApp.environmentLightingEnabled = environmentLightingBox.isSelected();
-
-                                environmentLightingBox.addItemListener(new ItemListener() {
-                                        @Override
-                                        public void itemStateChanged(ItemEvent e) {
-                                                modelPreviewApp.environmentLightingEnabled = environmentLightingBox.isSelected();
-                                                prefs.putBoolean(B_environmentLighting, environmentLightingBox.isSelected());
-                                        }
-                                });
-                        }
-
-
-
-                        JTextPane g3djTextView = new JTextPane();
-                        westLowerToolPane.addTab("G3DJ", null, g3djTextView, "View the G3DJ file");
-
-                        outputTextPane = new JTextPane();
-                        westLowerToolPane.addTab("Output Console", null, outputTextPane, "Output");
-
-                }
 
 
 
@@ -359,37 +238,137 @@ public class DesktopLauncher {
 
         }
 
-        private void logText(String text){
-                outputTextPane.setText(outputTextPane.getText()+"\n"+text);
-        }
 
-        private boolean isValidFbxConvFileLocation(File f){
-                return true;
-        }
-
-        private void previewFile(final File f){
-                Gdx.app.postRunnable(new Runnable() {
+        private void logText(final String text){
+                SwingUtilities.invokeLater(new Runnable() {
                         @Override
                         public void run() {
-                                if(f == null || f.isDirectory()){
-                                        modelPreviewApp.previewFile(null);
-                                }else{
-                                        try{
-                                                modelPreviewApp.previewFile(f);
-                                        }catch(GdxRuntimeException ex){
-                                                StringWriter sw = new StringWriter();
-                                                PrintWriter pw = new PrintWriter(sw);
-                                                ex.printStackTrace(pw);
-                                                sw.toString(); // stack trace as a string
-
-                                                logText("Couldnt Load File: "+f.getName()+"\n"+sw.toString());
-
-                                                modelPreviewApp.previewFile(null);
-
-                                        }
-
+                                if(outputTextPane == null){
+                                        System.out.println(text);
+                                        return;
                                 }
+                                outputTextPane.setText(outputTextPane.getText()+"\n"+text);
                         }
                 });
+        }
+
+        private void logTextError(Exception e){
+
+                StringWriter sw = new StringWriter();
+                PrintWriter pw = new PrintWriter(sw);
+                e.printStackTrace(pw);
+                logTextError(sw.toString());
+        }
+
+        private void logTextError(final String text){
+                SwingUtilities.invokeLater(new Runnable() {
+                        @Override
+                        public void run() {
+                                if(outputTextPane == null){
+                                        System.err.println(text);
+                                        return;
+                                }
+                                outputTextPane.setText(outputTextPane.getText()+"\n"+text);
+                                centerTabbedPane.setSelectedIndex(2);
+                        }
+                });
+        }
+
+
+
+
+
+
+        protected void previewFile(final File f){
+                threadPool.submit(new Callable<Void>() {
+                        @Override
+                        public Void call() throws Exception {
+                                // TODO: send something to the modelPreviewApp so itll show a loading message
+
+                                final File newF= convertFile(f, true);
+                                Gdx.app.postRunnable(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                                if (newF == null || newF.isDirectory()) {
+                                                        modelPreviewApp.previewFile(null);
+                                                } else {
+                                                        try {
+                                                                modelPreviewApp.previewFile(newF);
+                                                        } catch (GdxRuntimeException ex) {
+                                                                logTextError("Error while previewing file: " + f.getName());
+                                                                logTextError(ex);
+                                                                modelPreviewApp.previewFile(null);
+                                                        }
+                                                        if (newF != f)
+                                                                newF.delete(); // only delete newF if it is a temp file that was made in convertFile
+                                                }
+
+                                        }
+                                });
+                                return null;
+                        }
+                });
+        }
+
+        private File convertFile(File f, boolean temp){
+                String srcPath = f.getAbsolutePath();
+                String srcLower = srcPath.toLowerCase();
+                if(srcLower.endsWith(".g3db") || srcLower.endsWith(".g3dj")){
+                        return f; // Already in desirable format, return the same file
+                }
+
+                if(!fbxConvLocationBox.hasValidValue()){
+                        throw new IllegalStateException("fbx-conv is not yet configured.");
+                }
+
+                File targetDir = f.getParentFile();
+
+                String dstPath =  targetDir+fbxConvLocationBox.dirSeperator+ (temp ?"libgdx-model-viewer.temp.g3dj": stripExtension(f.getName()));
+                File convertedFile = new File(dstPath);
+
+                try {
+                        logText("-----------------------------------");
+                        String[] s = new String[]{fbxConvLocationBox.getName(), "-v", f.getName(), convertedFile.getName()};
+                        ProcessBuilder p =new ProcessBuilder(fbxConvLocationBox.getAbsolutePath(),"-v",srcPath,dstPath);
+
+                        logText(stringArrayToString(s) + "\n");
+                        String output = processOutput(p.start());
+                        logText(output);
+                } catch (IOException e) {
+                        logTextError(e);
+                        return null;
+                }
+
+                return convertedFile;
+        }
+
+        private static String stripExtension (String str) {
+                if (str == null) return null;
+                int pos = str.lastIndexOf(".");
+                if (pos == -1) return str;
+                return str.substring(0, pos);
+        }
+
+        private static String stringArrayToString(String[] stringArray){
+                if(stringArray == null || stringArray.length==0)
+                        return "";
+                String output="";
+                for (String s : stringArray) {
+                        output+=s+" ";
+                }
+                return output.substring(0, output.length()-1);
+        }
+
+        protected static String processOutput(Process proc) throws java.io.IOException {
+                java.io.InputStream is = proc.getInputStream();
+                java.util.Scanner s = new java.util.Scanner(is).useDelimiter("\\A");
+                String val = "";
+                if (s.hasNext()) {
+                        val = s.next();
+                }
+                else {
+                        val = "";
+                }
+                return val;
         }
 }
