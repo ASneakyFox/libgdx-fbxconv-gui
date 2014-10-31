@@ -22,7 +22,8 @@ public class FileChooserSideBar {
 
         JFileChooser fileChooser;
         BasicFileFilter[] fileFilters;
-        private BooleanConfigPanel automaticPreviewBox;
+        private BooleanConfigPanel alwaysConvert, automaticPreviewBox;
+        private JButton previewFileButton;
 
         public FileChooserSideBar(final DesktopLauncher desktopLauncher,JPanel parentPanel) {
 
@@ -83,10 +84,14 @@ public class FileChooserSideBar {
                 fileChooser.addPropertyChangeListener("SelectedFileChangedProperty", new PropertyChangeListener() {
                         @Override
                         public void propertyChange(PropertyChangeEvent evt) {
-                                if(!automaticPreviewBox.isSelected())
-                                        return;
+                                File fNew = (File)evt.getNewValue();
 
-                                desktopLauncher.previewFile((File)evt.getNewValue());
+                                desktopLauncher.refreshConvertButtonText();
+
+                                if(automaticPreviewBox.isSelected())
+                                        desktopLauncher.previewFile(fNew, true);
+
+
                         }
                 });
 
@@ -97,22 +102,31 @@ public class FileChooserSideBar {
                         JPanel westSouthPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
                         parentPanel.add(westSouthPanel, BorderLayout.SOUTH);
 
+                        alwaysConvert= new BooleanConfigPanel(desktopLauncher,DesktopLauncher.B_alwaysConvert,westSouthPanel, "Always Convert on Drag n' Drop", true){
+                                @Override
+                                protected void onChange() {
+
+                                }
+                        };
+                        alwaysConvert.checkBox.setToolTipText("<html>Check this to convert the source file instead of previewing it first when dragging<br>(Preview is still shown after converting)</html>");
+
+
                         automaticPreviewBox = new BooleanConfigPanel(desktopLauncher,DesktopLauncher.B_automaticPreview,westSouthPanel, "Automatic Preview", true){
                                 @Override
                                 protected void onChange() {
                                         if(isSelected())
-                                                desktopLauncher.previewFile(fileChooser.getSelectedFile());
+                                                desktopLauncher.previewFile(fileChooser.getSelectedFile(), true);
                                 }
                         };
 
 
 
-                        JButton previewFileButton = new JButton("Preview File");
+                        previewFileButton = new JButton("Preview File");
                         westSouthPanel.add(previewFileButton);
                         previewFileButton.addActionListener(new ActionListener() {
                                 @Override
                                 public void actionPerformed(final ActionEvent e) {
-                                        desktopLauncher.previewFile(fileChooser.getSelectedFile());
+                                        desktopLauncher.previewFile(fileChooser.getSelectedFile(), true);
                                 }
                         });
 
@@ -120,6 +134,34 @@ public class FileChooserSideBar {
 
 
 
+        }
+
+        public boolean isAlwaysConvert(){
+                return alwaysConvert.isSelected();
+        }
+
+
+        public File getSelectedFile(){
+                return fileChooser.getSelectedFile();
+        }
+
+        /**
+         * returns true if this is an obj, fbx, or dae file
+         * @param file
+         * @return
+         */
+        public boolean isFileCanBeConverted(File file){
+                if(file == null || file.isDirectory())
+                        return false;
+
+                String name = file.getName().toLowerCase();
+
+                return name.endsWith(".obj") || name.endsWith(".fbx") || name.endsWith(".dae");
+        }
+
+        public void refreshFileChooserList(){
+                fileChooser.rescanCurrentDirectory();
+                //((javax.swing.plaf.basic.BasicDirectoryModel)list.getModel()).fireContentsChanged();
         }
 
 

@@ -47,12 +47,13 @@ public class FileChooserFbxConv {
                 final JTextField fbxConvLocationField = new JTextField();
                 fbxConvToolBrowsePanel.add(fbxConvLocationField);
                 fbxConvLocation = desktopLauncher.prefs.get(prefsKey, null);
-                File fbxConvFile = new File(fbxConvLocation);
-                if(fbxConvLocation != null && !isValidFbxConvFileLocation(fbxConvFile)){
-                        fbxConvLocation = null;
+                if(isValidFbxConvFileLocation(fbxConvLocation)){
+                        fbxConvName = new File(fbxConvLocation).getName();
                 }else{
-                        fbxConvLocation = fbxConvFile.getAbsolutePath();
+                        fbxConvLocation = null;
+                        fbxConvName = null;
                 }
+
                 fbxConvLocationField.setText(fbxConvLocation!= null ? fbxConvLocation : "YOU MUST SET THE FBX-CONV LOCATION");
                 fbxConvLocationField.setEnabled(false);
 
@@ -66,7 +67,7 @@ public class FileChooserFbxConv {
                 fbxConvFileChooser.setFileFilter(new FileFilter() {
                         @Override
                         public boolean accept(File f) {
-                                return f.isDirectory() || isValidFbxConvFileLocation(f);
+                                return f.isDirectory() || isValidFbxConvFileLocation(f.getAbsolutePath());
                         }
 
                         @Override
@@ -86,6 +87,7 @@ public class FileChooserFbxConv {
                                         fbxConvLocationField.setText(absPath);
                                         desktopLauncher.prefs.put(prefsKey, absPath);
                                         fbxConvLocation = absPath;
+                                        fbxConvName = f.getName();
                                 }
                         }
                 });
@@ -94,14 +96,16 @@ public class FileChooserFbxConv {
 
         }
 
-        private boolean isValidFbxConvFileLocation(File f){
-                String name = f.getName().toLowerCase();
+        private boolean isValidFbxConvFileLocation(String absolutePath){
+                if(absolutePath == null){
+                        return false;
+                }
+                String name = absolutePath.toLowerCase();
                 if (!(name.endsWith("fbx-conv-win32.exe") || name.endsWith("fbx-conv-lin64") || name.endsWith("fbx-conv-mac")))
                         return false;
 
-                String path = f.getAbsolutePath();
                 try {
-                        Process proc = Runtime.getRuntime().exec(path,null,null);
+                        Process proc = Runtime.getRuntime().exec(absolutePath,null,null);
                         String output = DesktopLauncher.processOutput(proc);
                         return output.contains("fbx-conv");
                 } catch (IOException e) {

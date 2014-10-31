@@ -2,8 +2,16 @@ package asf.modelpreview;
 
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.assets.AssetDescriptor;
+import com.badlogic.gdx.assets.AssetManager;
+import com.badlogic.gdx.assets.loaders.BitmapFontLoader;
+import com.badlogic.gdx.assets.loaders.FileHandleResolver;
+import com.badlogic.gdx.assets.loaders.resolvers.InternalFileHandleResolver;
 import com.badlogic.gdx.graphics.*;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
+import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGeneratorLoader;
+import com.badlogic.gdx.graphics.g2d.freetype.FreetypeFontLoader;
 import com.badlogic.gdx.graphics.g3d.*;
 import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute;
 import com.badlogic.gdx.graphics.g3d.environment.DirectionalLight;
@@ -20,33 +28,41 @@ import com.badlogic.gdx.utils.JsonReader;
 import com.badlogic.gdx.utils.UBJsonReader;
 
 import java.io.File;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
 
 public class ModelPreviewApp extends ApplicationAdapter {
-        public PerspectiveCamera cam;
+
+        private PerspectiveCamera cam;
+        private CameraInputController camController;
+
         public Environment environment;
         public volatile boolean environmentLightingEnabled = true;
         public final Color backgroundColor = new Color(0,0,0,1);
-        public ModelBatch modelBatch;
-        public Model model;
-        public ModelInstance instance;
-        private CameraInputController camController;
+
+
+
+        private ModelBatch modelBatch;
+
+
+        private Model model;
+        private ModelInstance instance;
 
         private Stage stage;
         private Table table;
-        private ShapeRenderer shapeRenderer;
         private Label label;
 
+
+        private AssetManager assetManager;
         private G3dModelLoader g3dbModelLoader;
         private G3dModelLoader g3djModelLoader;
         private ObjLoader objLoader;
 
 
         public void previewFile(File f) throws GdxRuntimeException {
-
                 if(model != null){
                         model.dispose();
                         model = null;
-                        instance = null;
                 }
 
                 if(f == null){
@@ -54,10 +70,10 @@ public class ModelPreviewApp extends ApplicationAdapter {
                         model = modelBuilder.createBox(5f, 5f, 5f,
                                 new Material(ColorAttribute.createDiffuse(Color.GREEN)),
                                 VertexAttributes.Usage.Position | VertexAttributes.Usage.Normal);
-                        instance = new ModelInstance(model);
+
                 }else{
                         String absolutePath = f.getAbsolutePath();
-                        //System.out.println("abs path: "+absolutePath);
+
                         if(absolutePath.toLowerCase().endsWith("obj")){
                                 model = objLoader.loadModel(Gdx.files.absolute(absolutePath));
                         }else if(absolutePath.toLowerCase().endsWith("g3dj")){
@@ -65,22 +81,29 @@ public class ModelPreviewApp extends ApplicationAdapter {
                         }else{
                                 model = g3dbModelLoader.loadModel(Gdx.files.absolute(absolutePath));
                         }
-                        instance = new ModelInstance(model);
+
                 }
 
-                resetCam();
-                label.setText("");
+
+                onModelLoaded(model);
+
 
         }
 
-        public void showLoadingText(){
-                label.setText("Loading...");
+        public void showLoadingText(String text){
+                if(label != null)
+                label.setText(text);
 
         }
 
 
 	@Override
 	public void create () {
+                assetManager = new AssetManager();
+                FileHandleResolver resolver = new InternalFileHandleResolver();
+                assetManager.setLoader(FreeTypeFontGenerator.class, new FreeTypeFontGeneratorLoader(resolver));
+                assetManager.setLoader(BitmapFont.class, ".ttf", new FreetypeFontLoader(resolver));
+
                 objLoader = new ObjLoader();
                 g3dbModelLoader = new G3dModelLoader(new UBJsonReader());
                 g3djModelLoader = new G3dModelLoader(new JsonReader());
@@ -90,22 +113,13 @@ public class ModelPreviewApp extends ApplicationAdapter {
                 camController = new CameraInputController(null);
                 Gdx.input.setInputProcessor(camController);
 
-                stage = new Stage();
-                table = new Table();
-                table.setFillParent(true);
-                stage.addActor(table);
-                shapeRenderer = new ShapeRenderer();
 
-
-                //FreeTypeFontGenerator generator = new FreeTypeFontGenerator(fontFile);
-                //BitmapFont font15 = generator.generateFont(15);
-                //BitmapFont font22 = generator.generateFont(22);
-                //generator.dispose();
-
-                BitmapFont font = new BitmapFont();
-                font.setScale(10);
-                label = new Label("", new Label.LabelStyle(font, Color.BLACK));
-                table.add(label);
+                FreetypeFontLoader.FreeTypeFontLoaderParameter fontParameter = new FreetypeFontLoader.FreeTypeFontLoaderParameter();
+                fontParameter.fontFileName = "fonts/ariblk.ttf";
+                fontParameter.fontParameters.size=100;
+                //fontParameter.fontParameters.characters="Loading.";
+                fontParameter.fontParameters.flip = false;
+                assetManager.load("loadingFont.ttf", BitmapFont.class,fontParameter);
 
 
                 try{
@@ -124,6 +138,12 @@ public class ModelPreviewApp extends ApplicationAdapter {
 
 	@Override
 	public void render () {
+                if(assetManager.update()){
+                        if(stage == null && assetManager.isLoaded("loadingFont.ttf")){
+                                onFontLoaded(assetManager.get("loadingFont.ttf", BitmapFont.class));
+                        }
+                }
+
                 camController.update();
 
                 Gdx.gl.glClearColor(backgroundColor.r,backgroundColor.g,backgroundColor.b,backgroundColor.a);
@@ -137,10 +157,29 @@ public class ModelPreviewApp extends ApplicationAdapter {
                         modelBatch.end();
                 }
 
-                stage.draw();
+                if(stage != null)
+                        stage.draw();
 
-                table.drawDebug(shapeRenderer);
+
 	}
+
+        private void onModelLoaded(Model model){
+                this.model = model;
+                instance = new ModelInstance(model);
+                //resetCam();
+                if(label != null)
+                        label.setText("");
+        }
+
+        private void onFontLoaded(BitmapFont font){
+                stage = new Stage();
+                table = new Table();
+                table.setFillParent(true);
+                stage.addActor(table);
+
+                label = new Label("", new Label.LabelStyle(font, Color.BLACK));
+                table.add(label);
+        }
 
         private void resetCam(){
                 cam = new PerspectiveCamera(67, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
@@ -158,15 +197,19 @@ public class ModelPreviewApp extends ApplicationAdapter {
         public void resize(int width, int height) {
                 super.resize(width, height);
                 resetCam();
-                stage.getViewport().update(width, height, true);
+                if(stage != null)
+                        stage.getViewport().update(width, height, true);
         }
 
         @Override
         public void dispose () {
-                modelBatch.dispose();
+                if(modelBatch != null)
+                        modelBatch.dispose();
                 if(model != null)
                         model.dispose();
-                stage.dispose();
-                shapeRenderer.dispose();
+                if(stage != null)
+                        stage.dispose();
+                if(assetManager != null)
+                        assetManager.dispose();
         }
 }

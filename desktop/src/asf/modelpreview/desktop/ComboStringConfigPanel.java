@@ -1,11 +1,13 @@
 package asf.modelpreview.desktop;
 
+import javax.swing.BoxLayout;
 import javax.swing.ComboBoxModel;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.event.ListDataListener;
+import java.awt.FlowLayout;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
 
@@ -35,10 +37,12 @@ public class ComboStringConfigPanel {
                 }
                 comboBox.setSelectedItem(currentValue);
 
+                onChange();
                 comboBox.addItemListener(new ItemListener() {
                         @Override
                         public void itemStateChanged(ItemEvent e) {
-                                desktopLauncher.prefs.put(prefsKey,getValue());
+                                desktopLauncher.prefs.put(prefsKey, getValue());
+                                onChange();
                         }
                 });
 
@@ -47,6 +51,10 @@ public class ComboStringConfigPanel {
 
         public String getValue(){
                 return (String)comboBox.getSelectedItem();
+        }
+
+        protected void onChange(){
+
         }
 
 }

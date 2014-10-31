@@ -18,13 +18,14 @@ import java.awt.event.ItemListener;
  */
 public class BooleanConfigPanel {
 
-        private JCheckBox checkBox;
+        protected JCheckBox checkBox;
 
         public BooleanConfigPanel(final DesktopLauncher desktopLauncher, final String prefsKey, JPanel parentPanel,
                                   String label, final boolean defaultValue) {
 
 
                 checkBox = new JCheckBox(label);
+
                 parentPanel.add(checkBox);
                 boolean currentValue = desktopLauncher.prefs.getBoolean(prefsKey,defaultValue);
                 checkBox.setSelected(currentValue);
