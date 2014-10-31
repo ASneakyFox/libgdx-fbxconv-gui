@@ -8,33 +8,30 @@ import com.badlogic.gdx.utils.GdxRuntimeException;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JFrame;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextPane;
 import javax.swing.SwingUtilities;
+import javax.swing.TransferHandler;
 import javax.swing.UIManager;
 import java.awt.BorderLayout;
 import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Toolkit;
+import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.Transferable;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.nio.charset.Charset;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
 
 public class DesktopLauncher {
@@ -54,7 +51,7 @@ public class DesktopLauncher {
         protected final JFrame frame;
 
         private FileChooserSideBar fileChooser;
-        private JTabbedPane  westLowerToolPane;
+        private JTabbedPane westLowerToolPane;
         private FileChooserFbxConv fbxConvLocationBox;
         private BooleanConfigPanel flipTextureCoords, packVertexColors;
         private NumberConfigPanel maxVertxPanel, maxBonesPanel, maxBonesWeightsPanel;
@@ -62,11 +59,9 @@ public class DesktopLauncher {
         protected JButton convertButton;
         private BooleanConfigPanel environmentLightingBox;
         private JTabbedPane centerTabbedPane;
-        private JScrollPane  outputTextScrollPane;
+        private JScrollPane outputTextScrollPane;
         private JTextPane outputTextPane;
         private ModelPreviewApp modelPreviewApp;
-
-
 
 
         protected static final String S_folderLocation = "S_folderLocation";
@@ -80,6 +75,7 @@ public class DesktopLauncher {
         private static final String I_maxBonePerNodepart = "I_maxBonePerNodepart";
         private static final String I_maxBoneWeightPerVertex = "I_maxBoneWeightPerVertex";
         private static final String S_outputFileType = "S_outputFileType";
+        private static final String S_batchConvertFileType = "S_batchConvertFileType";
         private static final String B_environmentLighting = "B_environmentLighting";
 
 
@@ -91,7 +87,6 @@ public class DesktopLauncher {
                 Runtime.getRuntime().addShutdownHook(new Thread() {
                         @Override
                         public void run() {
-                                System.out.println("Shutdown Now");
                                 threadPool.shutdownNow();
                         }
                 });
@@ -113,7 +108,33 @@ public class DesktopLauncher {
 
 
                 frame = new JFrame("LibGDX Model Preview Utility");
+                TransferHandler handler = new TransferHandler() {
+                        @Override
+                        public boolean canImport(TransferSupport support) {
+                                if (!support.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
+                                        return false;
+                                }
+                                return true;
+                        }
 
+                        @Override
+                        public boolean importData(TransferSupport support) {
+                                Transferable t = support.getTransferable();
+                                List<File> data;
+                                try {
+                                        data = (List<File>) t.getTransferData(DataFlavor.javaFileListFlavor);
+                                } catch (Exception e) {
+                                        return false;
+                                }
+                                if(data.isEmpty()){
+                                        return false;
+                                }
+                                convertFilesAsBatch(data);
+                                return true;
+                        }
+
+                };
+                frame.setTransferHandler(handler);
                 frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
                 final Container container = frame.getContentPane();
                 container.setLayout(new BorderLayout());
@@ -186,7 +207,7 @@ public class DesktopLauncher {
                                         packVertexColors = new BooleanConfigPanel(this, B_packVertexColorsToOneFloat, packBase,
                                                 "Pack vertex colors to one float", false);
                                         outputFileTypeBox = new ComboStringConfigPanel(this, S_outputFileType, configPanel,
-                                                "Output Format", "G3DB", new String[]{"G3DB", "G3DJ"}){
+                                                "Output Format", "G3DB", new String[]{"G3DB", "G3DJ"}) {
                                                 @Override
                                                 protected void onChange() {
                                                         refreshConvertButtonText();
@@ -197,7 +218,7 @@ public class DesktopLauncher {
                                         configPanel.add(buttonBase);
                                         convertButton = new JButton("Choose a file to convert");
                                         buttonBase.add(convertButton);
-                                        convertButton.setPreferredSize(new Dimension(400,50));
+                                        convertButton.setPreferredSize(new Dimension(400, 50));
                                         refreshConvertButtonText();
                                         convertButton.addActionListener(new ActionListener() {
                                                 @Override
@@ -241,16 +262,16 @@ public class DesktopLauncher {
 
         }
 
-        protected void refreshConvertButtonText(){
-                if(convertButton == null){
+        protected void refreshConvertButtonText() {
+                if (convertButton == null) {
                         return;
                 }
-                if(fileChooser.isFileCanBeConverted(fileChooser.getSelectedFile())){
+                if (fileChooser.isFileCanBeConverted(fileChooser.getSelectedFile())) {
                         String ext = outputFileTypeBox.getValue().toLowerCase();
-                        String val = DesktopLauncher.stripExtension(fileChooser.getSelectedFile().getName()) +"."+ext;
-                        convertButton.setText("Convert to: "+val);
+                        String val = DesktopLauncher.stripExtension(fileChooser.getSelectedFile().getName()) + "." + ext;
+                        convertButton.setText("Convert to: " + val);
                         convertButton.setEnabled(true);
-                }else{
+                } else {
                         convertButton.setText("Choose a file to convert");
                         convertButton.setEnabled(false);
                 }
@@ -291,7 +312,48 @@ public class DesktopLauncher {
                 });
         }
 
+        private void convertFilesAsBatch(final List<File> files) {
+                if(files.size() == 1 && !files.get(0).isDirectory()){
+                        // a single non directory file was chosen, lets just select it
+                        fileChooser.setSelectedFile(files.get(0), true);
+                        return;
+                }
 
+                String[] options = new String[]{".fbx",".obj",".dae"};
+                String dstExtension = outputFileTypeBox.getValue().equals("G3DJ") ? ".g3dj" : ".g3db";
+                String msgAddition = files.size()==1 && files.get(0).isDirectory() ? " in "+files.get(0).getName() : "";
+                final String srcExtension = (String) JOptionPane.showInputDialog(
+                        frame,
+                        "Convert all files"+msgAddition+" to "+dstExtension+" that have the following extension:\n\n WARNING: this will start converting your files and cannot be undone!",
+                        "Batch model conversion",
+                        JOptionPane.QUESTION_MESSAGE,
+                        null,
+                        options,
+                        prefs.get(S_batchConvertFileType,".fbx"));
+
+
+
+                if(srcExtension == null){
+                        return;
+                }
+
+                prefs.put(S_batchConvertFileType,srcExtension);
+
+                centerTabbedPane.setSelectedComponent(outputTextScrollPane);
+                logText("---------Begin Batch File Conversion");
+
+                threadPool.submit(new Callable<Void>() {
+                        @Override
+                        public Void call() throws Exception {
+                                for(File file : files){
+                                        convertFileRecursive(file, srcExtension);
+                                }
+                                return null;
+                        }
+                });
+
+
+        }
 
         protected void previewFile(final File f, final boolean temp) {
                 threadPool.submit(new Callable<Void>() {
@@ -300,15 +362,15 @@ public class DesktopLauncher {
                                 Gdx.app.postRunnable(new Runnable() {
                                         @Override
                                         public void run() {
-                                                if(temp)
+                                                if (temp)
                                                         modelPreviewApp.showLoadingText("Loading...");
                                                 else
-                                                        modelPreviewApp.showLoadingText("Converting\n"+f.getName());
+                                                        modelPreviewApp.showLoadingText("Converting\n" + f.getName());
                                         }
                                 });
 
 
-                                final File newF = convertFile(f, temp);
+                                final File newF = convertFile(f, temp, true);
 
                                 Gdx.app.postRunnable(new Runnable() {
                                         @Override
@@ -326,7 +388,7 @@ public class DesktopLauncher {
 
                                                 }
 
-                                                if(temp && newF != f && newF != null && !newF.isDirectory()){ // only delete newF if it is a temp file that was made in convertFile
+                                                if (temp && newF != f && newF != null && !newF.isDirectory()) { // only delete newF if it is a temp file that was made in convertFile
                                                         newF.delete();
                                                 }
 
@@ -344,9 +406,27 @@ public class DesktopLauncher {
                 });
         }
 
+        private void convertFileRecursive(File f, String srcExtension){
 
-        private File convertFile(File f, boolean temp) {
-                if(f == null || f.isDirectory()){
+                if(f.isDirectory()){
+                        File[] files = f.listFiles();
+                        for (File file : files) {
+                                convertFileRecursive(file, srcExtension);
+                        }
+                }else{
+                        if(f.getName().toLowerCase().endsWith(srcExtension)){
+                                File outputFile = convertFile(f, false, false);
+                                if(outputFile != null && outputFile != f){
+                                        logText(f.getAbsolutePath()+ "--> "+outputFile.getName());
+                                }else{
+                                        logTextError(f.getAbsolutePath() + "--> Error, could not convert!");
+                                }
+                        }
+                }
+        }
+
+        private File convertFile(File f, boolean temp, boolean logDetailedOutput) {
+                if (f == null || f.isDirectory()) {
                         return null; // not a model file
                 }
                 String srcPath = f.getAbsolutePath();
@@ -356,7 +436,8 @@ public class DesktopLauncher {
                 }
 
                 if (!fbxConvLocationBox.hasValidValue()) {
-                        logTextError("Can not convert file, fbx-conv location is not yet configured.");
+                        if(logDetailedOutput)
+                                logTextError("Can not convert file, fbx-conv location is not yet configured.");
                         return null;
                 }
 
@@ -365,11 +446,13 @@ public class DesktopLauncher {
                 String dstPath = targetDir + fbxConvLocationBox.dirSeperator + (temp ? "libgdx-model-viewer.temp" : stripExtension(f.getName())) + dstExtension;
                 File convertedFile = new File(dstPath);
                 try {
-                        logText("-----------------------------------");
-                        ProcessBuilder p = new ProcessBuilder(fbxConvLocationBox.getAbsolutePath(),"-v");
-                        if(flipTextureCoords.isSelected())
+
+                        if(logDetailedOutput)
+                                logText("-----------------------------------");
+                        ProcessBuilder p = new ProcessBuilder(fbxConvLocationBox.getAbsolutePath(), "-v");
+                        if (flipTextureCoords.isSelected())
                                 p.command().add("-f");
-                        if(packVertexColors.isSelected())
+                        if (packVertexColors.isSelected())
                                 p.command().add("-p");
                         p.command().add("-m");
                         p.command().add(maxVertxPanel.getString());
@@ -379,10 +462,11 @@ public class DesktopLauncher {
                         p.command().add(maxBonesWeightsPanel.getString());
                         p.command().add(srcPath);
                         p.command().add(dstPath);
-
-                        logText(shortenCommand(p.command(), fbxConvLocationBox.getName(), f.getName(), convertedFile.getName()) + "\n");
+                        if(logDetailedOutput)
+                                logText(shortenCommand(p.command(), fbxConvLocationBox.getName(), f.getName(), convertedFile.getName()) + "\n");
                         String output = processOutput(p.start());
-                        logText(output);
+                        if(logDetailedOutput)
+                                logText(output);
                 } catch (IOException e) {
                         logTextError(e);
                         return null;
@@ -398,12 +482,12 @@ public class DesktopLauncher {
                 return str.substring(0, pos);
         }
 
-        private static String shortenCommand(List<String> command, String shortExecName, String shortSrcName, String shortDstName){
+        private static String shortenCommand(List<String> command, String shortExecName, String shortSrcName, String shortDstName) {
                 String output = shortExecName + " ";
-                for (int i = 1; i < command.size()-2; i++) {
+                for (int i = 1; i < command.size() - 2; i++) {
                         output += command.get(i) + " ";
                 }
-                return output+" "+shortSrcName+" "+shortDstName;
+                return output + " " + shortSrcName + " " + shortDstName;
         }
 
         private static String stringArrayToString(String[] stringArray) {
