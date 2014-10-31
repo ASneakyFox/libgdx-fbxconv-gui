@@ -2,9 +2,7 @@ package asf.modelpreview;
 
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.assets.AssetDescriptor;
 import com.badlogic.gdx.assets.AssetManager;
-import com.badlogic.gdx.assets.loaders.BitmapFontLoader;
 import com.badlogic.gdx.assets.loaders.FileHandleResolver;
 import com.badlogic.gdx.assets.loaders.resolvers.InternalFileHandleResolver;
 import com.badlogic.gdx.graphics.*;
@@ -17,22 +15,22 @@ import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute;
 import com.badlogic.gdx.graphics.g3d.environment.DirectionalLight;
 import com.badlogic.gdx.graphics.g3d.loader.G3dModelLoader;
 import com.badlogic.gdx.graphics.g3d.loader.ObjLoader;
+import com.badlogic.gdx.graphics.g3d.model.Animation;
+import com.badlogic.gdx.graphics.g3d.utils.AnimationController;
 import com.badlogic.gdx.graphics.g3d.utils.CameraInputController;
 import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder;
-import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
+import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.GdxRuntimeException;
 import com.badlogic.gdx.utils.JsonReader;
 import com.badlogic.gdx.utils.UBJsonReader;
 
 import java.io.File;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
 
 public class ModelPreviewApp extends ApplicationAdapter {
-
+        private final DesktopAppResolver desktopLauncher;
         private PerspectiveCamera cam;
         private CameraInputController camController;
 
@@ -47,6 +45,7 @@ public class ModelPreviewApp extends ApplicationAdapter {
 
         private Model model;
         private ModelInstance instance;
+        private AnimationController animController;
 
         private Stage stage;
         private Table table;
@@ -58,11 +57,15 @@ public class ModelPreviewApp extends ApplicationAdapter {
         private G3dModelLoader g3djModelLoader;
         private ObjLoader objLoader;
 
+        public ModelPreviewApp(DesktopAppResolver desktopLauncher) {
+                this.desktopLauncher = desktopLauncher;
+        }
 
         public void previewFile(File f) throws GdxRuntimeException {
                 if(model != null){
                         model.dispose();
                         model = null;
+                        animController = null;
                 }
 
                 if(f == null){
@@ -81,6 +84,7 @@ public class ModelPreviewApp extends ApplicationAdapter {
                         }else{
                                 model = g3dbModelLoader.loadModel(Gdx.files.absolute(absolutePath));
                         }
+
 
                 }
 
@@ -152,6 +156,9 @@ public class ModelPreviewApp extends ApplicationAdapter {
 
 
                 if(instance != null){
+                        if(animController != null){
+                                animController.update(Gdx.graphics.getDeltaTime());
+                        }
                         modelBatch.begin(cam);
                         modelBatch.render(instance, environmentLightingEnabled ? environment : null);
                         modelBatch.end();
@@ -163,9 +170,30 @@ public class ModelPreviewApp extends ApplicationAdapter {
 
 	}
 
+        public void setAnimation(Animation selectedItem) {
+                if(animController == null)
+                        return;
+
+                if(selectedItem == null){
+                        animController.setAnimation(null,-1);
+                }else{
+                        animController.setAnimation(selectedItem.id,-1);
+                }
+
+
+        }
+
         private void onModelLoaded(Model model){
                 this.model = model;
                 instance = new ModelInstance(model);
+
+                if(model.animations.size >0){
+                        animController = new AnimationController(instance);
+                        desktopLauncher.setAnimList(model.animations);
+                }else{
+                        desktopLauncher.setAnimList(null);
+                }
+
                 //resetCam();
                 if(label != null)
                         label.setText("");
@@ -181,7 +209,7 @@ public class ModelPreviewApp extends ApplicationAdapter {
                 table.add(label);
         }
 
-        private void resetCam(){
+        public void resetCam(){
                 cam = new PerspectiveCamera(67, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
                 cam.position.set(10f, 10f, 10f);
                 cam.lookAt(0,0,0);
@@ -211,5 +239,11 @@ public class ModelPreviewApp extends ApplicationAdapter {
                         stage.dispose();
                 if(assetManager != null)
                         assetManager.dispose();
+        }
+
+
+
+        public interface DesktopAppResolver {
+                public void setAnimList(Array<Animation> animations);
         }
 }

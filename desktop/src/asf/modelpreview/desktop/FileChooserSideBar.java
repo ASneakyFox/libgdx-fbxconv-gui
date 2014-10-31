@@ -114,29 +114,24 @@ public class FileChooserSideBar {
                         aboutButton.addActionListener(new ActionListener() {
                                 @Override
                                 public void actionPerformed(ActionEvent e) {
-                                        Object[] options = {"Ok",
+                                        Object[] options = {
                                                 "View on Github",
-                                                "Cancel"};
+                                                "Ok"};
                                         int n = JOptionPane.showOptionDialog(desktopLauncher.frame,
-                                                "This is a simple GUI to help make it easier to convert files to g3db." +
-                                                        "\n\nYou must have fbx-conv downloaded and it's libraries configured properly for this program to work." +
-                                                        "\n\nIf you need help or want more information about this program then visit it's Github page.",
+                                                "This is a simple GUI to help make it easier get your 3D models ready for your LibGDX game" +
+                                                        "\n\nYou must have fbx-conv downloaded and it's libraries configured in order to use the file conversion function." +
+                                                        "\n\nIf you need help or want more information about this software then visit its Github page.",
                                                 "About LibGDX fbx-conv Gui",
-                                                JOptionPane.YES_NO_CANCEL_OPTION,
+                                                JOptionPane.YES_NO_OPTION,
                                                 JOptionPane.QUESTION_MESSAGE,
                                                 null,
                                                 options,
-                                                options[2]);
+                                                options[1]);
 
-                                        if(n ==0){
-                                        }else if(n==1){
-                                                try {
-                                                        Desktop.getDesktop().browse(new URI("https://github.com/ASneakyFox/libgdx-fbxconv-gui"));
-                                                } catch (Throwable t) {
-                                                        JOptionPane.showMessageDialog(desktopLauncher.frame,"I couldnt open your browser, write this down:\n\nhttps://github.com/ASneakyFox/libgdx-fbxconv-gui");
-                                                }
-                                        }else{
-
+                                        try {
+                                                Desktop.getDesktop().browse(new URI("https://github.com/ASneakyFox/libgdx-fbxconv-gui"));
+                                        } catch (Throwable t) {
+                                                JOptionPane.showMessageDialog(desktopLauncher.frame,"I couldnt open your browser, write this down:\n\nhttps://github.com/ASneakyFox/libgdx-fbxconv-gui");
                                         }
                                 }
                         });

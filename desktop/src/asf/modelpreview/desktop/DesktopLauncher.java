@@ -3,11 +3,16 @@ package asf.modelpreview.desktop;
 import asf.modelpreview.ModelPreviewApp;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.backends.lwjgl.LwjglAWTCanvas;
+import com.badlogic.gdx.graphics.g3d.model.Animation;
+import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.GdxRuntimeException;
 
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -16,7 +21,9 @@ import javax.swing.JTextPane;
 import javax.swing.SwingUtilities;
 import javax.swing.TransferHandler;
 import javax.swing.UIManager;
+import javax.swing.plaf.basic.BasicComboBoxRenderer;
 import java.awt.BorderLayout;
+import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Toolkit;
@@ -34,7 +41,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.prefs.Preferences;
 
-public class DesktopLauncher {
+public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 
         public static void main(String[] arg) {
 
@@ -58,6 +65,7 @@ public class DesktopLauncher {
         protected ComboStringConfigPanel outputFileTypeBox;
         protected JButton convertButton;
         private BooleanConfigPanel environmentLightingBox;
+        private JComboBox animComboBox;
         private JTabbedPane centerTabbedPane;
         private JScrollPane outputTextScrollPane;
         private JTextPane outputTextPane;
@@ -146,7 +154,7 @@ public class DesktopLauncher {
 
                         // 3D Preview
                         {
-                                modelPreviewApp = new ModelPreviewApp();
+                                modelPreviewApp = new ModelPreviewApp(this);
                                 modelPreviewApp.backgroundColor.set(100 / 255f, 149 / 255f, 237 / 255f, 1f);
                                 LwjglAWTCanvas canvas = new LwjglAWTCanvas(modelPreviewApp);
                                 centerTabbedPane.addTab("3D Preview", null, canvas.getCanvas(), "3D Preview");
@@ -234,14 +242,65 @@ public class DesktopLauncher {
 
                                         JPanel viewportSettingsPanel = new JPanel();
                                         westLowerToolPane.addTab("Viewport Settings", null, viewportSettingsPanel, "Viewport Settings");
+                                        BoxLayout bl = new BoxLayout(viewportSettingsPanel, BoxLayout.PAGE_AXIS);
+                                        viewportSettingsPanel.setLayout(bl);
 
-                                        environmentLightingBox = new BooleanConfigPanel(this, B_environmentLighting, viewportSettingsPanel,
+                                        JPanel baseEnvPanel = new JPanel();
+                                        viewportSettingsPanel.add(baseEnvPanel);
+                                        environmentLightingBox = new BooleanConfigPanel(this, B_environmentLighting, baseEnvPanel,
                                                 "Environment Lighting", true) {
                                                 @Override
                                                 protected void onChange() {
                                                         modelPreviewApp.environmentLightingEnabled = isSelected();
                                                 }
                                         };
+
+                                        JPanel baseAnimPanel = new JPanel();
+                                        viewportSettingsPanel.add(baseAnimPanel);
+                                        baseAnimPanel.add(new JLabel("Animation: "));
+                                        animComboBox = new JComboBox();
+                                        baseAnimPanel.add(animComboBox);
+
+                                        animComboBox.setRenderer(new BasicComboBoxRenderer(){
+                                                @Override
+                                                public Component getListCellRendererComponent(JList list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+                                                        if(value == null){
+                                                                setText("<No Animation>");
+                                                        }else{
+                                                                Animation anim = (Animation) value;
+                                                                setText(anim.id+"  -  "+anim.duration);
+                                                        }
+                                                        return this;
+                                                }
+                                        });
+
+                                        animComboBox.addItem(null);
+
+
+                                        animComboBox.addActionListener(new ActionListener() {
+                                                @Override
+                                                public void actionPerformed(ActionEvent e) {
+
+                                                        modelPreviewApp.setAnimation((Animation)animComboBox.getSelectedItem());
+                                                }
+                                        });
+
+
+                                        JPanel baseCamPanel = new JPanel();
+                                        viewportSettingsPanel.add(baseCamPanel);
+                                        JButton resetCamButton = new JButton("Reset Camera");
+                                        baseCamPanel.add(resetCamButton);
+                                        resetCamButton.addActionListener(new ActionListener() {
+                                                @Override
+                                                public void actionPerformed(ActionEvent e) {
+                                                        Gdx.app.postRunnable(new Runnable() {
+                                                                @Override
+                                                                public void run() {
+                                                                        modelPreviewApp.resetCam();
+                                                                }
+                                                        });
+                                                }
+                                        });
 
                                 }
 
@@ -260,6 +319,17 @@ public class DesktopLauncher {
                 frame.setVisible(true);
 
 
+        }
+
+        public void setAnimList(Array<Animation> animations){
+                animComboBox.removeAllItems();
+                animComboBox.addItem(null);
+                if(animations==null)
+                        return;
+
+                for(Animation animName : animations){
+                        animComboBox.addItem(animName);
+                }
         }
 
         protected void refreshConvertButtonText() {
