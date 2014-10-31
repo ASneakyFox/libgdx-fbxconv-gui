@@ -7,9 +7,11 @@ Also serves as a model preveiw utility.
 
 Can convert files individually or in a batch.
 
+You can download a precompiled jar file in the "Releases" section.
+
 
 Basic Usage
-==================
+---------------
 
 You need Java 7 installed to use this software. It might work with Java 8, havent tried.
 
@@ -27,7 +29,7 @@ If youre having problems check to make sure you can use the command line tool by
 
 
 Previewing 3D Models
-==================
+---------------
 
 Use the file list on the left to search for 3d models to preview (supports .obj, .fbx, .dae, .g3db, .g3dj)
 
@@ -41,7 +43,7 @@ Previeiwng files is not the same as converting, You must push the "Convert" butt
 
 
 Single File and Batch Convert
-==================
+---------------
 
 When you drag and drop a directory, or multiple files and directories in to the window, it will do a batch convert. (a dialog will appear)
 
