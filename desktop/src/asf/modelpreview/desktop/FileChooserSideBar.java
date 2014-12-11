@@ -4,8 +4,6 @@ import javax.swing.JButton;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JTextField;
-import javax.swing.filechooser.FileFilter;
 import javax.swing.plaf.basic.BasicFileChooserUI;
 import java.awt.BorderLayout;
 import java.awt.Desktop;
@@ -14,10 +12,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
-import java.beans.PropertyVetoException;
-import java.beans.VetoableChangeListener;
 import java.io.File;
-import java.io.IOException;
 import java.net.URI;
 
 /**
@@ -44,8 +39,11 @@ public class FileChooserSideBar {
                 fileChooser.setAcceptAllFileFilterUsed(true);
                 fileChooser.setFileHidingEnabled(true);
                 fileChooser.setAcceptAllFileFilterUsed(false);
-                BasicFileChooserUI ui = (BasicFileChooserUI) fileChooser.getUI();
-                ui.getNewFolderAction().setEnabled(false);
+                if(fileChooser.getUI() instanceof  BasicFileChooserUI){
+                        BasicFileChooserUI ui = (BasicFileChooserUI) fileChooser.getUI();
+                        ui.getNewFolderAction().setEnabled(false);
+                }
+
                 fileFilters = new BasicFileFilter[]{
                         new BasicFileFilter("Autodesk *.fbx",".fbx"),
                         new BasicFileFilter("Wavefront *.obj", ".obj"),

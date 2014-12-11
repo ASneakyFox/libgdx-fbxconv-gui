@@ -66,7 +66,6 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
         protected JButton convertButton;
         private BooleanConfigPanel environmentLightingBox;
         private JComboBox animComboBox;
-        private JTabbedPane centerTabbedPane;
         private JScrollPane outputTextScrollPane;
         private JTextPane outputTextPane;
         private ModelPreviewApp modelPreviewApp;
@@ -99,17 +98,21 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
                         }
                 });
 
-
-                try {
-                        for (UIManager.LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
-                                if ("Nimbus".equals(info.getName())) {
-                                        UIManager.setLookAndFeel(info.getClassName());
-                                        break;
+                boolean isMac = System.getProperty("os.name").toLowerCase().contains("mac");
+                if(!isMac){
+                        try {
+                                for (UIManager.LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
+                                        if ("Nimbus".equals(info.getName())) {
+                                                UIManager.setLookAndFeel(info.getClassName());
+                                                break;
+                                        }
                                 }
+                        } catch (Exception e) {
+                                // If Nimbus is not available, you can set the GUI to another look and feel.
                         }
-                } catch (Exception e) {
-                        // If Nimbus is not available, you can set the GUI to another look and feel.
                 }
+
+
 
                 ///JPopupMenu.setDefaultLightWeightPopupEnabled(true);
                 UIManager.put("FileChooser.readOnly", Boolean.TRUE);
@@ -149,25 +152,10 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 
                 // center tabbed pane
                 {
-                        centerTabbedPane = new JTabbedPane();
-                        container.add(centerTabbedPane, BorderLayout.CENTER);
-
-                        // 3D Preview
-                        {
-                                modelPreviewApp = new ModelPreviewApp(this);
-                                modelPreviewApp.backgroundColor.set(100 / 255f, 149 / 255f, 237 / 255f, 1f);
-                                LwjglAWTCanvas canvas = new LwjglAWTCanvas(modelPreviewApp);
-                                centerTabbedPane.addTab("3D Preview", null, canvas.getCanvas(), "3D Preview");
-                        }
-
-                        // Output Console
-                        {
-                                outputTextPane = new JTextPane();
-                                outputTextScrollPane = new JScrollPane(outputTextPane);
-                                centerTabbedPane.addTab("Output Console", null, outputTextScrollPane, "Output");
-                        }
-
-
+                        modelPreviewApp = new ModelPreviewApp(this);
+                        modelPreviewApp.backgroundColor.set(100 / 255f, 149 / 255f, 237 / 255f, 1f);
+                        LwjglAWTCanvas canvas = new LwjglAWTCanvas(modelPreviewApp);
+                        container.add(canvas.getCanvas(), BorderLayout.CENTER);
                 }
 
                 // Left Side Tool Bar
@@ -195,7 +183,8 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
                                         JPanel configPanel = new JPanel();
                                         BoxLayout bl = new BoxLayout(configPanel, BoxLayout.PAGE_AXIS);
                                         configPanel.setLayout(bl);
-                                        westLowerToolPane.addTab("Configuration", null, configPanel, "Configure fbx-conv");
+                                        JScrollPane configPanelScrollPane = new JScrollPane(configPanel);
+                                        westLowerToolPane.addTab("Configuration", null, configPanelScrollPane, "Configure fbx-conv");
 
                                         fbxConvLocationBox = new FileChooserFbxConv(this, S_fbxConvLocation, configPanel);
 
@@ -241,7 +230,8 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
                                 {
 
                                         JPanel viewportSettingsPanel = new JPanel();
-                                        westLowerToolPane.addTab("Viewport Settings", null, viewportSettingsPanel, "Viewport Settings");
+                                        JScrollPane viewportSettingsPanelScrollPane = new JScrollPane(viewportSettingsPanel);
+                                        westLowerToolPane.addTab("Viewport Settings", null, viewportSettingsPanelScrollPane, "Viewport Settings");
                                         BoxLayout bl = new BoxLayout(viewportSettingsPanel, BoxLayout.PAGE_AXIS);
                                         viewportSettingsPanel.setLayout(bl);
 
@@ -302,6 +292,13 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
                                                 }
                                         });
 
+                                }
+
+                                // Output Console
+                                {
+                                        outputTextPane = new JTextPane();
+                                        outputTextScrollPane = new JScrollPane(outputTextPane);
+                                        westLowerToolPane.addTab("Output Console", null, outputTextScrollPane, "Output");
                                 }
 
                         }
@@ -377,7 +374,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
                                         return;
                                 }
                                 outputTextPane.setText(outputTextPane.getText() + "\n" + text);
-                                centerTabbedPane.setSelectedComponent(outputTextScrollPane);
+                                westLowerToolPane.setSelectedComponent(outputTextScrollPane);
                         }
                 });
         }
@@ -409,7 +406,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 
                 prefs.put(S_batchConvertFileType,srcExtension);
 
-                centerTabbedPane.setSelectedComponent(outputTextScrollPane);
+                westLowerToolPane.setSelectedComponent(outputTextScrollPane);
                 logText("---------Begin Batch File Conversion");
 
                 threadPool.submit(new Callable<Void>() {
