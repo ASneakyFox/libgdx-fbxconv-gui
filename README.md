@@ -7,9 +7,11 @@ Also serves as a model preveiw utility.
 
 Can convert files individually or in a batch.
 
+You can download a precompiled jar file in the "Releases" section.
+
 
 Basic Usage
-==================
+---------------
 
 You need Java 7 installed to use this software. It might work with Java 8, havent tried.
 
@@ -23,31 +25,31 @@ Until then you can download fbx-conv from: https://github.com/libgdx/fbx-conv .
 
 fbxconv-gui was tested with the latest release version of fbx-conv available on 10/30/2014, other versions may or may not work
 
-If youre having problems check to make sure you can use the command line tool by itself, check its readme file on github for more info.
+If youre having problems check to make sure you can use the command line tool by itself, check its readme file on its github page for more info.
 
 
 Previewing 3D Models
-==================
+---------------
 
 Use the file list on the left to search for 3d models to preview (supports .obj, .fbx, .dae, .g3db, .g3dj)
 
-Models in the format of .obj, .fbx, or .dae will be converted to .g3dj for previewing your specified configuration options on the bottom left. .g3dj and .g3db files do not be converted and will be viewed directly.
+Models in the format of .obj, .fbx, or .dae will be converted to .g3dj for previewing with your specified Configuration options on the bottom left, .g3dj and .g3db files do not be converted and will be viewed directly.
 
 If you have "Automatic Preview" checked then model files will automatically be shown when you select them, otherwise you need to press the "Preview" button.
 
 If you make change in the Configuration tab you need to press "Preview" again to see the changes, even if Automatic Preview is turned on.
 
-Previeiwng files is not the same as converting, You must push the "Convert" button in the Configuration tab to convert and save the current file.
+Previeiwng files is not the same as converting. You must push the "Convert" button in the Configuration tab to convert and save the current file.
 
 
 Single File and Batch Convert
-==================
+---------------
 
-When you drag and drop a directory, or multiple files and directories in to the window, it will do a batch convert. (a dialog will appear)
+When you drag and drop a directory to the window, it will do a batch convert. (a dialog will appear)
 
-It will ask you what extension to use for the "source" file (eg .fbx). Tt will only convert files with that extension. The new file will have the same name and be in the same directory, but with the new extension (either g3db or g3dj)
+It will ask you what extension to use for the "source" file (eg .fbx). It will only convert files with that extension. The new file will have the same name and be in the same directory, but with the new extension (either g3db or g3dj).
 
-If you drag and drop a single file it will automatically convert it as if it was a batch convert, unless you have that option deselected on the left toolbox, then it will just preview it.
+If you drag and drop a single file it will automatically convert it without a dialog, unless you have that option deselected on the left toolbox, then it will just preview it.
 
 
 License
