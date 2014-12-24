@@ -11,8 +11,11 @@ import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
 import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGeneratorLoader;
 import com.badlogic.gdx.graphics.g2d.freetype.FreetypeFontLoader;
 import com.badlogic.gdx.graphics.g3d.*;
+import com.badlogic.gdx.graphics.g3d.attributes.BlendingAttribute;
 import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute;
+import com.badlogic.gdx.graphics.g3d.attributes.IntAttribute;
 import com.badlogic.gdx.graphics.g3d.environment.DirectionalLight;
+import com.badlogic.gdx.graphics.g3d.environment.DirectionalShadowLight;
 import com.badlogic.gdx.graphics.g3d.loader.G3dModelLoader;
 import com.badlogic.gdx.graphics.g3d.loader.ObjLoader;
 import com.badlogic.gdx.graphics.g3d.model.Animation;
@@ -36,21 +39,18 @@ public class ModelPreviewApp extends ApplicationAdapter {
 
         public Environment environment;
         public volatile boolean environmentLightingEnabled = true;
-        public final Color backgroundColor = new Color(0,0,0,1);
-
-
+        public final Color backgroundColor = new Color(100 / 255f, 149 / 255f, 237 / 255f, 1f);
 
         private ModelBatch modelBatch;
 
-
         private Model model;
-        private ModelInstance instance;
+        private ModelInstance modelInstance;
         private AnimationController animController;
+        private boolean backFaceCulling = true;
 
         private Stage stage;
         private Table table;
         private Label label;
-
 
         private AssetManager assetManager;
         private G3dModelLoader g3dbModelLoader;
@@ -59,6 +59,23 @@ public class ModelPreviewApp extends ApplicationAdapter {
 
         public ModelPreviewApp(DesktopAppResolver desktopLauncher) {
                 this.desktopLauncher = desktopLauncher;
+        }
+
+        public void setBackFaceCulling(boolean backFaceCullinEnabled){
+                backFaceCulling = backFaceCullinEnabled;
+
+                if(modelInstance != null){
+                        if(backFaceCulling){
+                                for (Material mat : modelInstance.materials){
+                                        mat.remove(IntAttribute.CullFace);
+                                }
+                        }else{
+                                for (Material mat : modelInstance.materials){
+                                          mat.set(new IntAttribute(IntAttribute.CullFace, 0));
+                                }
+                        }
+
+                }
         }
 
         public void previewFile(File f) throws GdxRuntimeException {
@@ -73,7 +90,6 @@ public class ModelPreviewApp extends ApplicationAdapter {
                         model = modelBuilder.createBox(5f, 5f, 5f,
                                 new Material(ColorAttribute.createDiffuse(Color.GREEN)),
                                 VertexAttributes.Usage.Position | VertexAttributes.Usage.Normal);
-
                 }else{
                         String absolutePath = f.getAbsolutePath();
 
@@ -155,12 +171,12 @@ public class ModelPreviewApp extends ApplicationAdapter {
                 Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT);
 
 
-                if(instance != null){
+                if(modelInstance != null){
                         if(animController != null){
                                 animController.update(Gdx.graphics.getDeltaTime());
                         }
                         modelBatch.begin(cam);
-                        modelBatch.render(instance, environmentLightingEnabled ? environment : null);
+                        modelBatch.render(modelInstance, environmentLightingEnabled ? environment : null);
                         modelBatch.end();
                 }
 
@@ -185,10 +201,12 @@ public class ModelPreviewApp extends ApplicationAdapter {
 
         private void onModelLoaded(Model model){
                 this.model = model;
-                instance = new ModelInstance(model);
+                modelInstance = new ModelInstance(model);
+
+                setBackFaceCulling(backFaceCulling);
 
                 if(model.animations.size >0){
-                        animController = new AnimationController(instance);
+                        animController = new AnimationController(modelInstance);
                         desktopLauncher.setAnimList(model.animations);
                 }else{
                         desktopLauncher.setAnimList(null);

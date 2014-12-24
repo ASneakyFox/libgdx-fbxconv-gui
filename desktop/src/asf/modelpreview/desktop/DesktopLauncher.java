@@ -64,7 +64,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
         private NumberConfigPanel maxVertxPanel, maxBonesPanel, maxBonesWeightsPanel;
         protected ComboStringConfigPanel outputFileTypeBox;
         protected JButton convertButton;
-        private BooleanConfigPanel environmentLightingBox;
+        private BooleanConfigPanel environmentLightingBox, backFaceCullingBox;
         private JComboBox animComboBox;
         private JScrollPane outputTextScrollPane;
         private JTextPane outputTextPane;
@@ -84,7 +84,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
         private static final String S_outputFileType = "S_outputFileType";
         private static final String S_batchConvertFileType = "S_batchConvertFileType";
         private static final String B_environmentLighting = "B_environmentLighting";
-
+        private static final String B_backFaceCulling = "B_backFaceCulling";
 
         public DesktopLauncher() {
                 prefs = Preferences.userRoot().node("LibGDXModelPreviewUtility");
@@ -239,6 +239,19 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
                                                 @Override
                                                 protected void onChange() {
                                                         modelPreviewApp.environmentLightingEnabled = isSelected();
+                                                }
+                                        };
+
+                                        backFaceCullingBox = new BooleanConfigPanel(this, B_backFaceCulling, baseEnvPanel,
+                                                "Back Face Culling", true) {
+                                                @Override
+                                                protected void onChange() {
+                                                        Gdx.app.postRunnable(new Runnable() {
+                                                                @Override
+                                                                public void run() {
+                                                                        modelPreviewApp.setBackFaceCulling(isSelected());
+                                                                }
+                                                        });
                                                 }
                                         };
 
