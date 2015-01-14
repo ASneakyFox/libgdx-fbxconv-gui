@@ -242,7 +242,9 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
                                                 }
                                         };
 
-                                        backFaceCullingBox = new BooleanConfigPanel(this, B_backFaceCulling, baseEnvPanel,
+                                        JPanel baseBackFacePanel = new JPanel();
+                                        viewportSettingsPanel.add(baseBackFacePanel);
+                                        backFaceCullingBox = new BooleanConfigPanel(this, B_backFaceCulling, baseBackFacePanel,
                                                 "Back Face Culling", true) {
                                                 @Override
                                                 protected void onChange() {
