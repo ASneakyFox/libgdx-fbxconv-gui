@@ -170,13 +170,13 @@ public class ModelPreviewApp extends ApplicationAdapter {
                 environment.set(new ColorAttribute(ColorAttribute.AmbientLight, 0.4f, 0.4f, 0.4f, 1f));
                 environment.add(new DirectionalLight().set(0.8f, 0.8f, 0.8f, -1f, -0.8f, -0.2f));
 
-                Gdx.gl.glClearColor(backgroundColor.r,backgroundColor.g,backgroundColor.b,backgroundColor.a);
+                Gdx.gl.glClearColor(backgroundColor.r, backgroundColor.g, backgroundColor.b, backgroundColor.a);
 
         }
 
         @Override
         public void render() {
-                if (assetManager != null && assetManager.update()) {
+                if (assetManager.update()) {
                         if (stage == null && assetManager.isLoaded("loadingFont.ttf")) {
                                 onFontLoaded(assetManager.get("loadingFont.ttf", BitmapFont.class));
                         }
