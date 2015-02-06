@@ -13,17 +13,21 @@ You can download a precompiled jar file in the "Releases" section.
 Basic Usage
 ---------------
 
-You need Java 7 installed to use this software. It might work with Java 8, havent tried.
+1. You need Java 7 installed to use this software. It might work with Java 8, havent tried.
 
-run fbxconv-gui.jar by double click on it to run it.
+2. Download the command line tool fbx-conv from: https://github.com/libgdx/fbx-conv. extract the zip to your favorite folder.
 
-The first thing you need to do is set the path to your copy of fbx-conv
+3. Download fbxconv-gui.jar from the releases section and put it in the same folder with fbx-conv
 
-Click the Browse button in the Configuration tab and search for it. If I am allowed I may package this program with fbx-conv in the future and have it automatically detect. 
+4. (linux/mac only: be sure you also copy the .dylib and .so files to /usr/lib, windows users dont need to do this)
 
-Until then you can download fbx-conv from: https://github.com/libgdx/fbx-conv . 
+5. run fbxconv-gui.jar by double click on it to run it.
 
-fbxconv-gui was tested with the latest release version of fbx-conv available on 10/30/2014, other versions may or may not work
+6. The first thing you need to do is set the path to your copy of fbx-conv. Click the Browse button in the Configuration tab and search for it.
+
+7. You should be good to go. Program should be straight foward, read the below sections for more details.
+
+Note: fbxconv-gui was tested with the latest release version of fbx-conv available on 10/30/2014, other versions may or may not work
 
 If youre having problems check to make sure you can use the command line tool by itself, check its readme file on its github page for more info.
 
@@ -33,7 +37,7 @@ Previewing 3D Models
 
 Use the file list on the left to search for 3d models to preview (supports .obj, .fbx, .dae, .g3db, .g3dj)
 
-Models in the format of .obj, .fbx, or .dae will be converted to .g3dj for previewing with your specified Configuration options on the bottom left, .g3dj and .g3db files do not be converted and will be viewed directly.
+Models in the format of .obj, .fbx, or .dae will be converted to .g3dj for previewing with your specified Configuration options on the bottom left, .g3dj and .g3db files do not need to be converted and will be viewed directly.
 
 If you have "Automatic Preview" checked then model files will automatically be shown when you select them, otherwise you need to press the "Preview" button.
 
