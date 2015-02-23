@@ -21,6 +21,7 @@ import javax.swing.JTextPane;
 import javax.swing.SwingUtilities;
 import javax.swing.TransferHandler;
 import javax.swing.UIManager;
+import javax.swing.WindowConstants;
 import javax.swing.plaf.basic.BasicComboBoxRenderer;
 import java.awt.BorderLayout;
 import java.awt.Component;
@@ -64,7 +65,8 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
         private NumberConfigPanel maxVertxPanel, maxBonesPanel, maxBonesWeightsPanel;
         protected ComboStringConfigPanel outputFileTypeBox;
         protected JButton convertButton;
-        private BooleanConfigPanel environmentLightingBox, backFaceCullingBox;
+        private BooleanConfigPanel environmentLightingBox, backFaceCullingBox, alphaBlendingBox;
+        private BooleanIntegerConfigPanel alphaTestBox;
         private JComboBox animComboBox;
         private JScrollPane outputTextScrollPane;
         private JTextPane outputTextPane;
@@ -85,6 +87,9 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
         private static final String S_batchConvertFileType = "S_batchConvertFileType";
         private static final String B_environmentLighting = "B_environmentLighting";
         private static final String B_backFaceCulling = "B_backFaceCulling";
+        private static final String B_alphaBlending = "B_alphaBlending";
+        private static final String B_alphaTest = "B_alphaTest";
+        private static final String I_alphaTest = "I_alphaTest";
 
         public DesktopLauncher() {
                 prefs = Preferences.userRoot().node("LibGDXModelPreviewUtility");
@@ -143,7 +148,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 
                 };
                 frame.setTransferHandler(handler);
-                frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+                frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
                 final Container container = frame.getContentPane();
                 container.setLayout(new BorderLayout());
 
@@ -187,8 +192,8 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 
                                         JPanel flipBase = new JPanel();
                                         configPanel.add(flipBase);
-                                        flipTextureCoords = new BooleanConfigPanel(this, B_flipVTextureCoords, flipBase,
-                                                "Flip V Texture Coordinates", false);
+                                        flipTextureCoords = new BooleanConfigPanel(this, flipBase, "Flip V Texture Coordinates", B_flipVTextureCoords,
+                                                false);
 
                                         maxVertxPanel = new NumberConfigPanel(this, I_maxVertPerMesh, configPanel,
                                                 "Max Verticies per mesh (k)", 32, 1, 50, 1);
@@ -198,8 +203,8 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
                                                 "Max Bone Weights per vertex", 4, 1, 50, 1);
                                         JPanel packBase = new JPanel();
                                         configPanel.add(packBase);
-                                        packVertexColors = new BooleanConfigPanel(this, B_packVertexColorsToOneFloat, packBase,
-                                                "Pack vertex colors to one float", false);
+                                        packVertexColors = new BooleanConfigPanel(this, packBase, "Pack vertex colors to one float", B_packVertexColorsToOneFloat,
+                                                false);
                                         outputFileTypeBox = new ComboStringConfigPanel(this, S_outputFileType, configPanel,
                                                 "Output Format", "G3DB", new String[]{"G3DB", "G3DJ"}) {
                                                 @Override
@@ -234,8 +239,8 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 
                                         JPanel baseEnvPanel = new JPanel();
                                         viewportSettingsPanel.add(baseEnvPanel);
-                                        environmentLightingBox = new BooleanConfigPanel(this, B_environmentLighting, baseEnvPanel,
-                                                "Environment Lighting", true) {
+                                        environmentLightingBox = new BooleanConfigPanel(this, baseEnvPanel, "Environment Lighting", B_environmentLighting,
+                                                true) {
                                                 @Override
                                                 protected void onChange() {
                                                         modelPreviewApp.environmentLightingEnabled = isSelected();
@@ -244,8 +249,8 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 
                                         JPanel baseBackFacePanel = new JPanel();
                                         viewportSettingsPanel.add(baseBackFacePanel);
-                                        backFaceCullingBox = new BooleanConfigPanel(this, B_backFaceCulling, baseBackFacePanel,
-                                                "Back Face Culling", true) {
+                                        backFaceCullingBox = new BooleanConfigPanel(this, baseBackFacePanel, "Back Face Culling", B_backFaceCulling,
+                                                true) {
                                                 @Override
                                                 protected void onChange() {
                                                         Gdx.app.postRunnable(new Runnable() {
@@ -256,6 +261,48 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
                                                         });
                                                 }
                                         };
+                                        backFaceCullingBox.checkBox.setToolTipText("mat.set(new IntAttribute(IntAttribute.CullFace, 0));");
+
+
+                                        JPanel baseAlphaBlending = new JPanel();
+                                        viewportSettingsPanel.add(baseAlphaBlending);
+                                        alphaBlendingBox = new BooleanConfigPanel(this, baseAlphaBlending, "Alpha Blending", B_alphaBlending,
+                                                true) {
+                                                @Override
+                                                protected void onChange() {
+                                                        Gdx.app.postRunnable(new Runnable() {
+                                                                @Override
+                                                                public void run() {
+                                                                        modelPreviewApp.setAlphaBlending(isSelected());
+                                                                }
+                                                        });
+                                                }
+                                        };
+                                        alphaBlendingBox.checkBox.setToolTipText("mat.set(new BlendingAttribute(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA));");
+
+
+                                        JPanel baseAlphaTest = new JPanel();
+                                        viewportSettingsPanel.add(baseAlphaTest);
+                                        alphaTestBox = new BooleanIntegerConfigPanel(this, baseAlphaTest, "Alpha Test",
+                                                B_alphaTest, false,
+                                                I_alphaTest, 50, 0,100, 1) {
+                                                @Override
+                                                protected void onChange() {
+                                                        Gdx.app.postRunnable(new Runnable() {
+                                                                @Override
+                                                                public void run() {
+                                                                        if(getBooleanValue())
+                                                                                modelPreviewApp.setAlphaTest(getIntegerValue()/100f);
+                                                                        else
+                                                                                modelPreviewApp.setAlphaTest(-1f);
+                                                                }
+                                                        });
+                                                }
+                                        };
+                                        alphaTestBox.checkBox.setToolTipText("mat.set(new BlendingAttribute(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA));");
+
+
+
 
                                         JPanel baseAnimPanel = new JPanel();
                                         viewportSettingsPanel.add(baseAnimPanel);

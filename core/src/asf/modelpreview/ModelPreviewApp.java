@@ -18,7 +18,9 @@ import com.badlogic.gdx.graphics.g3d.Material;
 import com.badlogic.gdx.graphics.g3d.Model;
 import com.badlogic.gdx.graphics.g3d.ModelBatch;
 import com.badlogic.gdx.graphics.g3d.ModelInstance;
+import com.badlogic.gdx.graphics.g3d.attributes.BlendingAttribute;
 import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute;
+import com.badlogic.gdx.graphics.g3d.attributes.FloatAttribute;
 import com.badlogic.gdx.graphics.g3d.attributes.IntAttribute;
 import com.badlogic.gdx.graphics.g3d.environment.DirectionalLight;
 import com.badlogic.gdx.graphics.g3d.loader.G3dModelLoader;
@@ -56,6 +58,8 @@ public class ModelPreviewApp extends ApplicationAdapter {
         private ModelInstance modelInstance;
         private AnimationController animController;
         private boolean backFaceCulling = true;
+        private boolean alphaBlending = false;
+        private float alphaTest = -1;
 
         private Stage stage;
         private Label label, infoLabel;
@@ -82,9 +86,40 @@ public class ModelPreviewApp extends ApplicationAdapter {
                                         mat.set(new IntAttribute(IntAttribute.CullFace, 0));
                                 }
                         }
-
                 }
         }
+
+        public void setAlphaBlending(boolean alphaBlendingEnabled){
+                alphaBlending = alphaBlendingEnabled;
+                if(modelInstance != null){
+                        if(alphaBlending){
+                                for (Material mat : modelInstance.materials) {
+                                        mat.set(new BlendingAttribute(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA));
+                                }
+                        }else{
+                                for (Material mat : modelInstance.materials) {
+                                        mat.remove(BlendingAttribute.Type);
+                                }
+                        }
+                }
+        }
+
+        public void setAlphaTest(float alphaTestValue){
+                alphaTest = alphaTestValue;
+                if(modelInstance != null){
+                        if(alphaTest>=0){
+                                for (Material mat : modelInstance.materials) {
+                                        mat.set(new FloatAttribute(FloatAttribute.AlphaTest, alphaTest));
+                                }
+                        }else{
+                                for (Material mat : modelInstance.materials) {
+                                        mat.remove(FloatAttribute.AlphaTest);
+                                }
+                        }
+                }
+        }
+
+
 
         public void setBackgroundColor(float r, float g, float b){
                 backgroundColor.set(r,g,b,1);
@@ -238,6 +273,8 @@ public class ModelPreviewApp extends ApplicationAdapter {
                 }
 
                 setBackFaceCulling(backFaceCulling);
+                setAlphaBlending(alphaBlending);
+                setAlphaTest(alphaTest);
 
                 if (model.animations.size > 0) {
                         animController = new AnimationController(modelInstance);

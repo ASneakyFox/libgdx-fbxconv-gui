@@ -134,7 +134,7 @@ public class FileChooserSideBar {
                                 }
                         });
 
-                        alwaysConvert= new BooleanConfigPanel(desktopLauncher,DesktopLauncher.B_alwaysConvert,westSouthPanel, "Always Convert on Drag n' Drop", true){
+                        alwaysConvert= new BooleanConfigPanel(desktopLauncher, westSouthPanel, "Always Convert on Drag n' Drop", DesktopLauncher.B_alwaysConvert, true){
                                 @Override
                                 protected void onChange() {
 
@@ -143,7 +143,7 @@ public class FileChooserSideBar {
                         alwaysConvert.checkBox.setToolTipText("<html>Check this to convert the source file instead of previewing it first when dragging<br>(Preview is still shown after converting)</html>");
 
 
-                        automaticPreviewBox = new BooleanConfigPanel(desktopLauncher,DesktopLauncher.B_automaticPreview,westSouthPanel, "Automatic Preview", true){
+                        automaticPreviewBox = new BooleanConfigPanel(desktopLauncher, westSouthPanel, "Automatic Preview", DesktopLauncher.B_automaticPreview, true){
                                 @Override
                                 protected void onChange() {
                                         if(isSelected())
