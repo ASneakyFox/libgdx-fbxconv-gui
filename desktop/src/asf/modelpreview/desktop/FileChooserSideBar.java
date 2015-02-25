@@ -116,9 +116,9 @@ public class FileChooserSideBar {
                                                 "View on Github",
                                                 "Ok"};
                                         int n = JOptionPane.showOptionDialog(desktopLauncher.frame,
-                                                "This is a simple GUI to help make it easier get your 3D models ready for your LibGDX game" +
+                                                "This is a simple GUI created by Daniel Strong to help make it easier get your 3D models ready for your LibGDX game" +
                                                         "\n\nYou must have fbx-conv downloaded and it's libraries configured in order to use the file conversion function." +
-                                                        "\n\nIf you need help or want more information about this software then visit its Github page.",
+                                                        "\nIf you need help or want more information about this software then visit its Github page.",
                                                 "About LibGDX fbx-conv Gui",
                                                 JOptionPane.YES_NO_OPTION,
                                                 JOptionPane.QUESTION_MESSAGE,
@@ -134,7 +134,7 @@ public class FileChooserSideBar {
                                 }
                         });
 
-                        alwaysConvert= new BooleanConfigPanel(desktopLauncher, westSouthPanel, "Always Convert on Drag n' Drop", DesktopLauncher.B_alwaysConvert, true){
+                        alwaysConvert= new BooleanConfigPanel(desktopLauncher, westSouthPanel, "Convert on Drag n' Drop", DesktopLauncher.B_alwaysConvert, true){
                                 @Override
                                 protected void onChange() {
 

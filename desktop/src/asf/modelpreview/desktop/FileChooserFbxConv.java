@@ -1,18 +1,13 @@
 package asf.modelpreview.desktop;
 
 import javax.swing.JButton;
-import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
-import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.filechooser.FileFilter;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.ItemEvent;
-import java.awt.event.ItemListener;
 import java.io.File;
-import java.io.IOException;
 
 /**
  * Created by Danny on 10/30/2014.
@@ -101,17 +96,23 @@ public class FileChooserFbxConv {
                         return false;
                 }
                 String name = absolutePath.toLowerCase();
-                if (!(name.endsWith("fbx-conv-win32.exe") || name.endsWith("fbx-conv-lin64") || name.endsWith("fbx-conv-mac")))
-                        return false;
+                return name.endsWith(fbxConvExecName);
 
-                try {
-                        Process proc = Runtime.getRuntime().exec(absolutePath,null,null);
-                        String output = DesktopLauncher.processOutput(proc);
-                        return output.contains("fbx-conv");
-                } catch (IOException e) {
-                        //e.printStackTrace();
-                        return false;
-                }
+                // shouldnt try to check for a valid fbx-conv here- instead
+                // let the user choose the file, then on the output window display
+                // a suggestion with the error message saying fbx-conv might not be
+                // installed correctly..
+
+                //if (!(name.endsWith("fbx-conv-win32.exe") || name.endsWith("fbx-conv-lin64") || name.endsWith("fbx-conv-mac")))
+                //        return false;
+//                try {
+//                        Process proc = Runtime.getRuntime().exec(absolutePath,null,null);
+//                        String output = DesktopLauncher.processOutput(proc);
+//                        return output.contains("fbx-conv");
+//                } catch (IOException e) {
+//                        //e.printStackTrace();
+//                        return false;
+//                }
         }
 
         public boolean hasValidValue(){

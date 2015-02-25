@@ -17,7 +17,7 @@ Basic Usage
 
 2. Download the command line tool fbx-conv from: https://github.com/libgdx/fbx-conv. extract the zip to your favorite folder.
 
-3. Download fbxconv-gui.jar from the releases section and put it in the same folder with fbx-conv
+3. Download fbxconv-gui.jar from the releases section ( https://github.com/ASneakyFox/libgdx-fbxconv-gui/releases ) and put it in the same folder with fbx-conv
 
 4. (linux/mac only: be sure you also copy the .dylib and .so files to /usr/lib, windows users dont need to do this)
 
@@ -25,7 +25,7 @@ Basic Usage
 
 6. The first thing you need to do is set the path to your copy of fbx-conv. Click the Browse button in the Configuration tab and search for it.
 
-7. You should be good to go. Program should be straight foward, read the below sections for more details.
+7. You should be good to go. Program should be straight forward, read the below sections for more details.
 
 Note: fbxconv-gui was tested with the latest release version of fbx-conv available on 10/30/2014, other versions may or may not work
 
@@ -59,7 +59,7 @@ If you drag and drop a single file it will automatically convert it without a di
 License
 ==================
 
-Copyright (c) 2014, Daniel Strong
+Copyright (c) 2014-2015, Daniel Strong
 
 All rights reserved.
 

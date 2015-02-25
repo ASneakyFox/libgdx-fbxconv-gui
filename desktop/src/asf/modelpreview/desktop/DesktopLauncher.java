@@ -299,7 +299,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
                                                         });
                                                 }
                                         };
-                                        alphaTestBox.checkBox.setToolTipText("mat.set(new BlendingAttribute(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA));");
+                                        alphaTestBox.checkBox.setToolTipText("mat.set(new FloatAttribute(FloatAttribute.AlphaTest, 0.5f));");
 
 
 
@@ -422,6 +422,14 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
                 PrintWriter pw = new PrintWriter(sw);
                 e.printStackTrace(pw);
                 logTextError(sw.toString());
+        }
+
+        private void logTextError(Exception e, String hintMessage) {
+
+                StringWriter sw = new StringWriter();
+                PrintWriter pw = new PrintWriter(sw);
+                e.printStackTrace(pw);
+                logTextError(sw.toString()+"\n"+hintMessage);
         }
 
         private void logTextError(final String text) {
@@ -594,7 +602,19 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
                         if(logDetailedOutput)
                                 logText(output);
                 } catch (IOException e) {
-                        logTextError(e);
+                        boolean possibleBadInstallation;
+                        try {
+                                Process proc = Runtime.getRuntime().exec(fbxConvLocationBox.getAbsolutePath(),null,null);
+                                String output = DesktopLauncher.processOutput(proc);
+                                possibleBadInstallation = !output.contains("fbx-conv");
+                        } catch (IOException ex) {
+                                possibleBadInstallation = true;
+                        }
+                        if(possibleBadInstallation){
+                                logTextError(e,"It's possible you either selected the wrong executable file, or you don't have fbx-conv installed correctly.\nIf you're on mac or linux be sure that libfbxsdk.dylib and libfbxsdk.so are in /usr/lib");
+                        }else{
+                                logTextError(e);
+                        }
                         return null;
                 }
 
