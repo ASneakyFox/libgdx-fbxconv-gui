@@ -65,13 +65,14 @@ public class FileChooserFbxConv {
 			}
                 }
 
-                fbxConvLocationField.setText(fbxConvLocation!= null ? fbxConvLocation : "YOU MUST SET THE FBX-CONV LOCATION");
+                fbxConvLocationField.setText(fbxConvLocation != null ? fbxConvLocation : "YOU MUST SET THE FBX-CONV LOCATION");
+		fbxConvLocationField.setEditable(false);
                 //fbxConvLocationField.setEnabled(false);
 
                 final JFileChooser fbxConvFileChooser = new JFileChooser();
                 if(fbxConvLocation != null)
                         fbxConvFileChooser.setCurrentDirectory(new File(fbxConvLocation));
-                fbxConvFileChooser.setDialogTitle("Find the file: fbx-conv-win32.exe");
+                fbxConvFileChooser.setDialogTitle("Find the file: "+fbxConvExecName);
                 fbxConvFileChooser.setDragEnabled(false);
                 fbxConvFileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
                 fbxConvFileChooser.setAcceptAllFileFilterUsed(false);

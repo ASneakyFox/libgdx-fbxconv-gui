@@ -23,7 +23,8 @@ public class FileChooserSideBar {
         final DesktopLauncher desktopLauncher;
         JFileChooser fileChooser;
         BasicFileFilter[] fileFilters;
-        private BooleanConfigPanel alwaysConvert, automaticPreviewBox;
+        //private BooleanConfigPanel alwaysConvert;
+	private BooleanConfigPanel automaticPreviewBox;
         private JButton previewFileButton;
 
         private PropertyChangeListener selectedFilePropertyChange;
@@ -117,7 +118,7 @@ public class FileChooserSideBar {
                                                 "Ok"};
                                         int n = JOptionPane.showOptionDialog(desktopLauncher.frame,
                                                 "This is a simple GUI created by Daniel Strong to help make it easier get your 3D models ready for your LibGDX game" +
-                                                        "\n\nYou must have fbx-conv downloaded and it's libraries configured in order to use the file conversion function." +
+                                                        "\n\n" +
                                                         "\nIf you need help or want more information about this software then visit its Github page.",
                                                 "About LibGDX fbx-conv Gui",
                                                 JOptionPane.YES_NO_OPTION,
@@ -125,15 +126,19 @@ public class FileChooserSideBar {
                                                 null,
                                                 options,
                                                 options[1]);
+					if(n==0)
+					{
+						try {
+							Desktop.getDesktop().browse(new URI("http://asneakyfox.github.io/libgdx-fbxconv-gui/"));
+						} catch (Throwable t) {
+							JOptionPane.showMessageDialog(desktopLauncher.frame,"I couldnt open your browser while trying to navigae to:\n\nhttp://asneakyfox.github.io/libgdx-fbxconv-gui/");
+						}
+					}
 
-                                        try {
-                                                Desktop.getDesktop().browse(new URI("https://github.com/ASneakyFox/libgdx-fbxconv-gui"));
-                                        } catch (Throwable t) {
-                                                JOptionPane.showMessageDialog(desktopLauncher.frame,"I couldnt open your browser, write this down:\n\nhttps://github.com/ASneakyFox/libgdx-fbxconv-gui");
-                                        }
                                 }
                         });
 
+			/*
                         alwaysConvert= new BooleanConfigPanel(desktopLauncher, westSouthPanel, "Convert on Drag n' Drop", DesktopLauncher.B_alwaysConvert, true){
                                 @Override
                                 protected void onChange() {
@@ -141,7 +146,7 @@ public class FileChooserSideBar {
                                 }
                         };
                         alwaysConvert.checkBox.setToolTipText("<html>Check this to convert the source file instead of previewing it first when dragging<br>(Preview is still shown after converting)</html>");
-
+			*/
 
                         automaticPreviewBox = new BooleanConfigPanel(desktopLauncher, westSouthPanel, "Automatic Preview", DesktopLauncher.B_automaticPreview, true){
                                 @Override
@@ -167,12 +172,6 @@ public class FileChooserSideBar {
 
 
         }
-
-        public boolean isAlwaysConvert(){
-                return alwaysConvert.isSelected();
-        }
-
-
         public void setSelectedFile(File file){
                 setSelectedFile(file, false);
         }
@@ -181,15 +180,13 @@ public class FileChooserSideBar {
                 // Remove and re-add the listener to avoid issues with redropping the same file
                 fileChooser.removePropertyChangeListener("SelectedFileChangedProperty",selectedFilePropertyChange);
 
-                boolean convertInsteadOfPreview = setFromDragnDrop && isAlwaysConvert();
+                //boolean convertInsteadOfPreview = setFromDragnDrop && alwaysConvert.isSelected();
                 fileChooser.setSelectedFile(file);
                 desktopLauncher.refreshConvertButtonText();
                 if(automaticPreviewBox.isSelected())
-                        desktopLauncher.previewFile(fileChooser.getSelectedFile(), !convertInsteadOfPreview);
+                        desktopLauncher.previewFile(fileChooser.getSelectedFile(), true); // !convertInsteadOfPreview
 
                 fileChooser.addPropertyChangeListener("SelectedFileChangedProperty",selectedFilePropertyChange );
-
-
 
         }
 

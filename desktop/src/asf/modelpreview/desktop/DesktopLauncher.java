@@ -61,7 +61,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 
         protected static final String S_folderLocation = "S_folderLocation";
         protected static final String I_fileFilter = "I_fileFilter";
-        protected static final String B_alwaysConvert = "B_alwaysConvert";
+        //protected static final String B_alwaysConvert = "B_alwaysConvert";
         protected static final String B_automaticPreview = "B_automaticPreview";
         private static final String S_fbxConvLocation = "S_fbxConvLocation";
         private static final String B_flipVTextureCoords = "B_flipVTextureCoords";
@@ -475,14 +475,14 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 
         }
 
-        protected void previewFile(final File f, final boolean temp) {
+        protected void previewFile(final File f, final boolean tempPreview) {
                 threadPool.submit(new Callable<Void>() {
                         @Override
                         public Void call() throws Exception {
                                 Gdx.app.postRunnable(new Runnable() {
                                         @Override
                                         public void run() {
-                                                if (temp)
+                                                if (tempPreview)
                                                         modelPreviewApp.showLoadingText("Loading...");
                                                 else
                                                         modelPreviewApp.showLoadingText("Converting\n" + f.getName());
@@ -490,7 +490,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
                                 });
 
 
-                                final File newF = convertFile(f, temp, true);
+                                final File newF = convertFile(f, tempPreview, true);
 
                                 Gdx.app.postRunnable(new Runnable() {
                                         @Override
@@ -508,7 +508,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 
                                                 }
 
-                                                if (temp && newF != f && newF != null && !newF.isDirectory()) { // only delete newF if it is a temp file that was made in convertFile
+                                                if (tempPreview && newF != f && newF != null && !newF.isDirectory()) { // only delete newF if it is a temp file that was made in convertFile
                                                         newF.delete();
                                                 }
 
@@ -545,7 +545,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
                 }
         }
 
-        private File convertFile(File f, boolean temp, boolean logDetailedOutput) {
+        private File convertFile(File f, boolean tempPreview, boolean logDetailedOutput) {
                 if (f == null || f.isDirectory()) {
                         return null; // not a model file
                 }
@@ -562,8 +562,8 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
                 }
 
                 File targetDir = f.getParentFile();
-                String dstExtension = temp || outputFileTypeBox.getValue().equals("G3DJ") ? ".g3dj" : ".g3db";
-                String dstPath = targetDir + fbxConvLocationBox.dirSeperator + (temp ? "libgdx-model-viewer.temp" : stripExtension(f.getName())) + dstExtension;
+                String dstExtension = tempPreview || outputFileTypeBox.getValue().equals("G3DJ") ? ".g3dj" : ".g3db";
+                String dstPath = targetDir + fbxConvLocationBox.dirSeperator + (tempPreview ? "libgdx-model-viewer.temp" : stripExtension(f.getName())) + dstExtension;
                 File convertedFile = new File(dstPath);
                 try {
 
