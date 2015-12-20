@@ -34,10 +34,12 @@ public class NumberConfigPanel {
                 int currentValue = desktopLauncher.prefs.getInt(prefsKey,defaultValue);
                 spinner.setValue(currentValue);
                 spinner.setModel(spinnerModel);
+		onChange();
                 spinner.addChangeListener(new ChangeListener() {
                         @Override
                         public void stateChanged(ChangeEvent e) {
                                 desktopLauncher.prefs.putInt(prefsKey, spinnerModel.getNumber().intValue());
+				onChange();
                         }
                 });
                 basePanel.add(spinner);
@@ -58,5 +60,9 @@ public class NumberConfigPanel {
         }
         public String getString(){
                 return String.valueOf(getValue());
+        }
+
+        protected void onChange(){
+
         }
 }

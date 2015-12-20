@@ -9,11 +9,7 @@ import com.badlogic.gdx.utils.GdxRuntimeException;
 
 import javax.swing.*;
 import javax.swing.plaf.basic.BasicComboBoxRenderer;
-import java.awt.BorderLayout;
-import java.awt.Component;
-import java.awt.Container;
-import java.awt.Dimension;
-import java.awt.Toolkit;
+import java.awt.*;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
 import java.awt.event.ActionEvent;
@@ -178,19 +174,48 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 
                                         JPanel flipBase = new JPanel();
                                         configPanel.add(flipBase);
-                                        flipTextureCoords = new BooleanConfigPanel(this, flipBase, "Flip V Texture Coordinates", B_flipVTextureCoords,
-                                                true);
+                                        flipTextureCoords = new BooleanConfigPanel(this, flipBase, "Flip V Texture Coordinates", B_flipVTextureCoords,true){
+						@Override
+						protected void onChange() {
+							if(fileChooser.isAutomaticPreview())
+								previewFile(fileChooser.getSelectedFile(), false);
+						}
+					};
 
                                         maxVertxPanel = new NumberConfigPanel(this, I_maxVertPerMesh, configPanel,
-                                                "Max Verticies per mesh (k)", 32, 1, 50, 1);
+                                                "Max Verticies per mesh (k)", 32, 1, 50, 1){
+						@Override
+						protected void onChange() {
+							if(fileChooser.isAutomaticPreview())
+								previewFile(fileChooser.getSelectedFile(), false);
+						}
+					};
                                         maxBonesPanel = new NumberConfigPanel(this, I_maxBonePerNodepart, configPanel,
-                                                "Max Bones per nodepart", 12, 1, 50, 1);
+                                                "Max Bones per nodepart", 12, 1, 50, 1){
+						@Override
+						protected void onChange() {
+							if(fileChooser.isAutomaticPreview())
+								previewFile(fileChooser.getSelectedFile(), false);
+						}
+					};
                                         maxBonesWeightsPanel = new NumberConfigPanel(this, I_maxBoneWeightPerVertex, configPanel,
-                                                "Max Bone Weights per vertex", 4, 1, 50, 1);
+                                                "Max Bone Weights per vertex", 4, 1, 50, 1){
+						@Override
+						protected void onChange() {
+							if(fileChooser.isAutomaticPreview())
+								previewFile(fileChooser.getSelectedFile(), false);
+						}
+					};
                                         JPanel packBase = new JPanel();
                                         configPanel.add(packBase);
                                         packVertexColors = new BooleanConfigPanel(this, packBase, "Pack vertex colors to one float", B_packVertexColorsToOneFloat,
-                                                false);
+                                                false){
+						@Override
+						protected void onChange() {
+							if (fileChooser.isAutomaticPreview())
+								previewFile(fileChooser.getSelectedFile(), false);
+						}
+					};
                                         outputFileTypeBox = new ComboStringConfigPanel(this, S_outputFileType, configPanel,
                                                 "Output Format", "G3DB", new String[]{"G3DB", "G3DJ"}) {
                                                 @Override
@@ -476,55 +501,67 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
         }
 
         protected void previewFile(final File f, final boolean tempPreview) {
-                threadPool.submit(new Callable<Void>() {
-                        @Override
-                        public Void call() throws Exception {
-                                Gdx.app.postRunnable(new Runnable() {
-                                        @Override
-                                        public void run() {
-                                                if (tempPreview)
-                                                        modelPreviewApp.showLoadingText("Loading...");
-                                                else
-                                                        modelPreviewApp.showLoadingText("Converting\n" + f.getName());
-                                        }
-                                });
 
-
-                                final File newF = convertFile(f, tempPreview, true);
-
-                                Gdx.app.postRunnable(new Runnable() {
-                                        @Override
-                                        public void run() {
-                                                if (newF == null || newF.isDirectory()) {
-                                                        modelPreviewApp.previewFile(null);
-                                                } else {
-                                                        try {
-                                                                modelPreviewApp.previewFile(newF);
-                                                        } catch (GdxRuntimeException ex) {
-                                                                logTextError("Error while previewing file: " + f.getName());
-                                                                logTextError(ex);
-                                                                modelPreviewApp.previewFile(null);
-                                                        }
-
-                                                }
-
-                                                if (tempPreview && newF != f && newF != null && !newF.isDirectory()) { // only delete newF if it is a temp file that was made in convertFile
-                                                        newF.delete();
-                                                }
-
-                                                SwingUtilities.invokeLater(new Runnable() {
-                                                        @Override
-                                                        public void run() {
-                                                                fileChooser.refreshFileChooserList();
-                                                        }
-                                                });
-                                        }
-                                });
-
-                                return null;
-                        }
-                });
+                threadPool.submit(new PreviewFileCallable(f, tempPreview));
         }
+
+	private class PreviewFileCallable implements Callable<Void>{
+
+		private final File f;
+		private final boolean tempPreview;
+
+		public PreviewFileCallable(File f, boolean tempPreview) {
+			this.f = f;
+			this.tempPreview = tempPreview;
+		}
+
+		@Override
+		public Void call() throws Exception {
+			Gdx.app.postRunnable(new Runnable() {
+				@Override
+				public void run() {
+					if (tempPreview || f == null)
+						modelPreviewApp.showLoadingText("Loading...");
+					else
+						modelPreviewApp.showLoadingText("Converting\n" + f.getName());
+				}
+			});
+
+
+			final File newF = convertFile(f, tempPreview, true);
+
+			Gdx.app.postRunnable(new Runnable() {
+				@Override
+				public void run() {
+					if (newF == null || newF.isDirectory()) {
+						modelPreviewApp.previewFile(null);
+					} else {
+						try {
+							modelPreviewApp.previewFile(newF);
+						} catch (GdxRuntimeException ex) {
+							logTextError("Error while previewing file: " + f.getName());
+							logTextError(ex);
+							modelPreviewApp.previewFile(null);
+						}
+
+					}
+
+					if (tempPreview && newF != f && newF != null && !newF.isDirectory()) { // only delete newF if it is a temp file that was made in convertFile
+						newF.delete();
+					}
+
+					SwingUtilities.invokeLater(new Runnable() {
+						@Override
+						public void run() {
+							fileChooser.refreshFileChooserList();
+						}
+					});
+				}
+			});
+
+			return null;
+		}
+	}
 
         private void convertFileRecursive(File f, String srcExtension){
 

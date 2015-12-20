@@ -92,8 +92,8 @@ public class FileChooserSideBar {
                         @Override
                         public void propertyChange(PropertyChangeEvent evt) {
                                 desktopLauncher.refreshConvertButtonText();
-                                if(automaticPreviewBox.isSelected())
-                                        desktopLauncher.previewFile(fileChooser.getSelectedFile(), true);
+				if(automaticPreviewBox.isSelected())
+					desktopLauncher.previewFile(fileChooser.getSelectedFile(), true);
 
                         }
                 };
@@ -182,13 +182,17 @@ public class FileChooserSideBar {
 
                 //boolean convertInsteadOfPreview = setFromDragnDrop && alwaysConvert.isSelected();
                 fileChooser.setSelectedFile(file);
-                desktopLauncher.refreshConvertButtonText();
-                if(automaticPreviewBox.isSelected())
-                        desktopLauncher.previewFile(fileChooser.getSelectedFile(), true); // !convertInsteadOfPreview
+		desktopLauncher.refreshConvertButtonText();
+		if(automaticPreviewBox.isSelected())
+			desktopLauncher.previewFile(fileChooser.getSelectedFile(), true); // !convertInsteadOfPreview
 
                 fileChooser.addPropertyChangeListener("SelectedFileChangedProperty",selectedFilePropertyChange );
 
         }
+
+	public boolean isAutomaticPreview(){
+		return automaticPreviewBox.isSelected();
+	}
 
         public File getSelectedFile(){
                 return fileChooser.getSelectedFile();
