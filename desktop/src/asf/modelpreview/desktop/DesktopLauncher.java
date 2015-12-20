@@ -7,21 +7,7 @@ import com.badlogic.gdx.graphics.g3d.model.Animation;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.GdxRuntimeException;
 
-import javax.swing.BoxLayout;
-import javax.swing.JButton;
-import javax.swing.JComboBox;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JList;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JTabbedPane;
-import javax.swing.JTextPane;
-import javax.swing.SwingUtilities;
-import javax.swing.TransferHandler;
-import javax.swing.UIManager;
-import javax.swing.WindowConstants;
+import javax.swing.*;
 import javax.swing.plaf.basic.BasicComboBoxRenderer;
 import java.awt.BorderLayout;
 import java.awt.Component;
@@ -193,7 +179,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
                                         JPanel flipBase = new JPanel();
                                         configPanel.add(flipBase);
                                         flipTextureCoords = new BooleanConfigPanel(this, flipBase, "Flip V Texture Coordinates", B_flipVTextureCoords,
-                                                false);
+                                                true);
 
                                         maxVertxPanel = new NumberConfigPanel(this, I_maxVertPerMesh, configPanel,
                                                 "Max Verticies per mesh (k)", 32, 1, 50, 1);

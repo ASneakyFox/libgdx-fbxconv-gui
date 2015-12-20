@@ -1,5 +1,8 @@
 package asf.modelpreview.desktop;
 
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.files.FileHandle;
+
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
 import javax.swing.JPanel;
@@ -45,12 +48,25 @@ public class FileChooserFbxConv {
                 if(isValidFbxConvFileLocation(fbxConvLocation)){
                         fbxConvName = new File(fbxConvLocation).getName();
                 }else{
-                        fbxConvLocation = null;
-                        fbxConvName = null;
+			// attempt to detect the fbx conv location
+			try{
+				String jarPath = FileChooserFbxConv.class.getProtectionDomain().getCodeSource().getLocation().getPath();
+				fbxConvLocation = Gdx.files.absolute(jarPath).parent().child(fbxConvExecName).file().getAbsolutePath();
+				if(isValidFbxConvFileLocation(fbxConvLocation)){
+					fbxConvName = new File(fbxConvLocation).getName();
+					desktopLauncher.prefs.put(prefsKey, fbxConvLocation);
+				}else{
+					throw new Exception("invalid fbx conv location: "+fbxConvLocation);
+				}
+
+			}catch(Exception e){
+				fbxConvLocation = null;
+				fbxConvName = null;
+			}
                 }
 
                 fbxConvLocationField.setText(fbxConvLocation!= null ? fbxConvLocation : "YOU MUST SET THE FBX-CONV LOCATION");
-                fbxConvLocationField.setEnabled(false);
+                //fbxConvLocationField.setEnabled(false);
 
                 final JFileChooser fbxConvFileChooser = new JFileChooser();
                 if(fbxConvLocation != null)
@@ -95,6 +111,10 @@ public class FileChooserFbxConv {
                 if(absolutePath == null){
                         return false;
                 }
+		FileHandle absoluteFh = Gdx.files.absolute(absolutePath);
+		if(!absoluteFh.exists()){
+			return false;
+		}
                 String name = absolutePath.toLowerCase();
                 return name.endsWith(fbxConvExecName);
 
