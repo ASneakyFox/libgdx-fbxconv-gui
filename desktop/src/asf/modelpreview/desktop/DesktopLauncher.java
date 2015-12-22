@@ -7,9 +7,31 @@ import com.badlogic.gdx.graphics.g3d.model.Animation;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.GdxRuntimeException;
 
-import javax.swing.*;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JList;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JSeparator;
+import javax.swing.JTabbedPane;
+import javax.swing.JTextArea;
+import javax.swing.JTextPane;
+import javax.swing.SpringLayout;
+import javax.swing.SwingUtilities;
+import javax.swing.TransferHandler;
+import javax.swing.UIManager;
+import javax.swing.WindowConstants;
 import javax.swing.plaf.basic.BasicComboBoxRenderer;
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Component;
+import java.awt.Container;
+import java.awt.Desktop;
+import java.awt.Dimension;
+import java.awt.Toolkit;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
 import java.awt.event.ActionEvent;
@@ -18,6 +40,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.net.URI;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -41,15 +64,14 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
         protected final JFrame frame;
 
         private FileChooserSideBar fileChooser;
-        private JTabbedPane westLowerToolPane;
+        private JTabbedPane mainTabbedPane;
         private FileChooserFbxConv fbxConvLocationBox;
         private BooleanConfigPanel flipTextureCoords, packVertexColors;
         private NumberConfigPanel maxVertxPanel, maxBonesPanel, maxBonesWeightsPanel;
         protected ComboStringConfigPanel outputFileTypeBox;
-        protected JButton convertButton;
         private BooleanConfigPanel environmentLightingBox, backFaceCullingBox, alphaBlendingBox;
         private BooleanIntegerConfigPanel alphaTestBox;
-        private JComboBox animComboBox;
+        private JComboBox<Animation> animComboBox;
         private JScrollPane outputTextScrollPane;
         private JTextPane outputTextPane;
         private ModelPreviewApp modelPreviewApp;
@@ -132,246 +154,265 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
                 frame.setTransferHandler(handler);
                 frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
                 final Container container = frame.getContentPane();
-                container.setLayout(new BorderLayout());
+                ///container.setLayout(new BorderLayout());
+		container.setLayout(new BoxLayout(container, BoxLayout.LINE_AXIS));
+
+		mainTabbedPane = new JTabbedPane();
+		mainTabbedPane.setTabPlacement(JTabbedPane.TOP);
+		mainTabbedPane.setPreferredSize(new Dimension(525,1000));
+		mainTabbedPane.setMaximumSize(new Dimension(550,2000));
+		container.add(mainTabbedPane);
 
                 // center tabbed pane
                 {
                         modelPreviewApp = new ModelPreviewApp(this);
                         modelPreviewApp.backgroundColor.set(100 / 255f, 149 / 255f, 237 / 255f, 1f);
                         LwjglAWTCanvas canvas = new LwjglAWTCanvas(modelPreviewApp);
-                        container.add(canvas.getCanvas(), BorderLayout.CENTER);
+                        container.add(canvas.getCanvas());
                 }
 
                 // Left Side Tool Bar
                 {
-                        JPanel westBasePanel = new JPanel(new BorderLayout());
-                        container.add(westBasePanel, BorderLayout.WEST);
 
-                        JPanel westUpperFileBrowsingPanel = new JPanel(new BorderLayout());
-                        westBasePanel.add(westUpperFileBrowsingPanel, BorderLayout.NORTH);
+			// fbx-conv Configuration
+			{
+				JPanel configPanel = new JPanel();
+				BoxLayout bl = new BoxLayout(configPanel, BoxLayout.PAGE_AXIS);
+				configPanel.setLayout(bl);
+				JScrollPane configPanelScrollPane = new JScrollPane(configPanel);
+				mainTabbedPane.addTab("File Browser", null, configPanelScrollPane, "Configure fbx-conv");
+
+				fileChooser = new FileChooserSideBar(this, configPanel);
+
+				configPanel.add(new JSeparator());
+
+				fbxConvLocationBox = new FileChooserFbxConv(this, S_fbxConvLocation, configPanel);
 
 
-                        // Source File File Chooser
-                        {
-                                fileChooser = new FileChooserSideBar(this, westUpperFileBrowsingPanel);
-                        }
+
+				JPanel flipBase = new JPanel();
+				configPanel.add(flipBase);
+				flipTextureCoords = new BooleanConfigPanel(this, flipBase, "Flip V Texture Coordinates", B_flipVTextureCoords,true){
+					@Override
+					protected void onChange() {
+						if(fileChooser.isAutomaticPreview())
+							previewFile(fileChooser.getSelectedFile(), false);
+					}
+				};
+
+				maxVertxPanel = new NumberConfigPanel(this, I_maxVertPerMesh, configPanel,
+					"Max Verticies per mesh (k)", 32, 1, 50, 1){
+					@Override
+					protected void onChange() {
+						if(fileChooser.isAutomaticPreview())
+							previewFile(fileChooser.getSelectedFile(), false);
+					}
+				};
+				maxBonesPanel = new NumberConfigPanel(this, I_maxBonePerNodepart, configPanel,
+					"Max Bones per nodepart", 12, 1, 50, 1){
+					@Override
+					protected void onChange() {
+						if(fileChooser.isAutomaticPreview())
+							previewFile(fileChooser.getSelectedFile(), false);
+					}
+				};
+				maxBonesWeightsPanel = new NumberConfigPanel(this, I_maxBoneWeightPerVertex, configPanel,
+					"Max Bone Weights per vertex", 4, 1, 50, 1){
+					@Override
+					protected void onChange() {
+						if(fileChooser.isAutomaticPreview())
+							previewFile(fileChooser.getSelectedFile(), false);
+					}
+				};
+				JPanel packBase = new JPanel();
+				configPanel.add(packBase);
+				packVertexColors = new BooleanConfigPanel(this, packBase, "Pack vertex colors to one float", B_packVertexColorsToOneFloat,
+					false){
+					@Override
+					protected void onChange() {
+						if (fileChooser.isAutomaticPreview())
+							previewFile(fileChooser.getSelectedFile(), false);
+					}
+				};
+				outputFileTypeBox = new ComboStringConfigPanel(this, S_outputFileType, configPanel,
+					"Output Format", "G3DB", new String[]{"G3DB", "G3DJ"}) {
+					@Override
+					protected void onChange() {
+						fileChooser.refreshConvertButtonText();
+					}
+				};
 
 
-                        // File Conversion and File Preview Settings
-                        {
-                                westLowerToolPane = new JTabbedPane();
-                                westBasePanel.add(westLowerToolPane, BorderLayout.CENTER);
-                                westLowerToolPane.setTabPlacement(JTabbedPane.TOP);
-                                // fbx-conv Configuration
-                                {
-                                        JPanel configPanel = new JPanel();
-                                        BoxLayout bl = new BoxLayout(configPanel, BoxLayout.PAGE_AXIS);
-                                        configPanel.setLayout(bl);
-                                        JScrollPane configPanelScrollPane = new JScrollPane(configPanel);
-                                        westLowerToolPane.addTab("Configuration", null, configPanelScrollPane, "Configure fbx-conv");
+			}
+			// Viewport Settings
+			{
 
-                                        fbxConvLocationBox = new FileChooserFbxConv(this, S_fbxConvLocation, configPanel);
+				JPanel viewportSettingsPanel = new JPanel();
+				JScrollPane viewportSettingsPanelScrollPane = new JScrollPane(viewportSettingsPanel);
+				mainTabbedPane.addTab("Viewport Settings", null, viewportSettingsPanelScrollPane, "Viewport Settings");
+				BoxLayout bl = new BoxLayout(viewportSettingsPanel, BoxLayout.PAGE_AXIS);
+				viewportSettingsPanel.setLayout(bl);
 
-                                        JPanel flipBase = new JPanel();
-                                        configPanel.add(flipBase);
-                                        flipTextureCoords = new BooleanConfigPanel(this, flipBase, "Flip V Texture Coordinates", B_flipVTextureCoords,true){
-						@Override
-						protected void onChange() {
-							if(fileChooser.isAutomaticPreview())
-								previewFile(fileChooser.getSelectedFile(), false);
+				JPanel baseEnvPanel = new JPanel();
+				viewportSettingsPanel.add(baseEnvPanel);
+				environmentLightingBox = new BooleanConfigPanel(this, baseEnvPanel, "Environment Lighting", B_environmentLighting,
+					true) {
+					@Override
+					protected void onChange() {
+						modelPreviewApp.environmentLightingEnabled = isSelected();
+					}
+				};
+
+				JPanel baseBackFacePanel = new JPanel();
+				viewportSettingsPanel.add(baseBackFacePanel);
+				backFaceCullingBox = new BooleanConfigPanel(this, baseBackFacePanel, "Back Face Culling", B_backFaceCulling,
+					true) {
+					@Override
+					protected void onChange() {
+						Gdx.app.postRunnable(new Runnable() {
+							@Override
+							public void run() {
+								modelPreviewApp.setBackFaceCulling(isSelected());
+							}
+						});
+					}
+				};
+				backFaceCullingBox.checkBox.setToolTipText("mat.set(new IntAttribute(IntAttribute.CullFace, 0));");
+
+
+				JPanel baseAlphaBlending = new JPanel();
+				viewportSettingsPanel.add(baseAlphaBlending);
+				alphaBlendingBox = new BooleanConfigPanel(this, baseAlphaBlending, "Alpha Blending", B_alphaBlending,
+					true) {
+					@Override
+					protected void onChange() {
+						Gdx.app.postRunnable(new Runnable() {
+							@Override
+							public void run() {
+								modelPreviewApp.setAlphaBlending(isSelected());
+							}
+						});
+					}
+				};
+				alphaBlendingBox.checkBox.setToolTipText("mat.set(new BlendingAttribute(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA));");
+
+
+				JPanel baseAlphaTest = new JPanel();
+				viewportSettingsPanel.add(baseAlphaTest);
+				alphaTestBox = new BooleanIntegerConfigPanel(this, baseAlphaTest, "Alpha Test",
+					B_alphaTest, false,
+					I_alphaTest, 50, 0,100, 1) {
+					@Override
+					protected void onChange() {
+						Gdx.app.postRunnable(new Runnable() {
+							@Override
+							public void run() {
+								if(getBooleanValue())
+									modelPreviewApp.setAlphaTest(getIntegerValue()/100f);
+								else
+									modelPreviewApp.setAlphaTest(-1f);
+							}
+						});
+					}
+				};
+				alphaTestBox.checkBox.setToolTipText("mat.set(new FloatAttribute(FloatAttribute.AlphaTest, 0.5f));");
+
+
+
+
+				JPanel baseAnimPanel = new JPanel();
+				viewportSettingsPanel.add(baseAnimPanel);
+				baseAnimPanel.add(new JLabel("Animation: "));
+				animComboBox = new JComboBox<Animation>();
+				baseAnimPanel.add(animComboBox);
+
+
+				BasicComboBoxRenderer animComboRenderer = new BasicComboBoxRenderer() {
+					@Override
+					public Component getListCellRendererComponent(JList list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+						if (value == null) {
+							setText("<No Animation>");
+						} else {
+							Animation anim = (Animation) value;
+							setText(anim.id + "  -  " + anim.duration);
 						}
-					};
+						return this;
+					}
+				};
 
-                                        maxVertxPanel = new NumberConfigPanel(this, I_maxVertPerMesh, configPanel,
-                                                "Max Verticies per mesh (k)", 32, 1, 50, 1){
-						@Override
-						protected void onChange() {
-							if(fileChooser.isAutomaticPreview())
-								previewFile(fileChooser.getSelectedFile(), false);
+				animComboBox.setRenderer(animComboRenderer);
+
+				animComboBox.addItem(null);
+
+
+				animComboBox.addActionListener(new ActionListener() {
+					@Override
+					public void actionPerformed(ActionEvent e) {
+						modelPreviewApp.setAnimation((Animation)animComboBox.getSelectedItem());
+					}
+				});
+
+
+				JPanel baseCamPanel = new JPanel();
+				viewportSettingsPanel.add(baseCamPanel);
+				JButton resetCamButton = new JButton("Reset Camera");
+				baseCamPanel.add(resetCamButton);
+				resetCamButton.addActionListener(new ActionListener() {
+					@Override
+					public void actionPerformed(ActionEvent e) {
+						Gdx.app.postRunnable(new Runnable() {
+							@Override
+							public void run() {
+								modelPreviewApp.resetCam();
+							}
+						});
+					}
+				});
+
+			}
+
+			// Output Console
+			{
+				outputTextPane = new JTextPane();
+				outputTextPane.setEditable(false);
+				outputTextScrollPane = new JScrollPane(outputTextPane);
+				mainTabbedPane.addTab("Output Console", null, outputTextScrollPane, "Output");
+			}
+
+
+			// About
+			{
+				JPanel aboutPanel = new JPanel(new BorderLayout());
+				JScrollPane aboutScrollPane = new JScrollPane(aboutPanel);
+
+				String text="libgdx-fbxconv-gui is a lightweight program created by Daniel Strong to help make it easier to get your 3D models ready for LibGDX.";
+				text+="\n\nIf you need help or want more information about this software then visit the github page at: http://asneakyfox.github.io/libgdx-fbxconv-gui/";
+				JTextArea aboutTextPane = new JTextArea(text);
+				aboutTextPane.setLineWrap(true);
+				aboutTextPane.setWrapStyleWord(true);
+				aboutTextPane.setEditable(false);
+
+
+
+				aboutPanel.add(aboutTextPane, BorderLayout.CENTER);
+
+
+				JButton githubUrlButton = new JButton("View on Github");
+				githubUrlButton.addActionListener(new ActionListener() {
+					@Override
+					public void actionPerformed(ActionEvent e) {
+						try {
+							Desktop.getDesktop().browse(new URI("http://asneakyfox.github.io/libgdx-fbxconv-gui/"));
+						} catch (Throwable t) {
+							JOptionPane.showMessageDialog(frame,"I couldnt open your browser while trying to navigate to:\n\nhttp://asneakyfox.github.io/libgdx-fbxconv-gui/");
 						}
-					};
-                                        maxBonesPanel = new NumberConfigPanel(this, I_maxBonePerNodepart, configPanel,
-                                                "Max Bones per nodepart", 12, 1, 50, 1){
-						@Override
-						protected void onChange() {
-							if(fileChooser.isAutomaticPreview())
-								previewFile(fileChooser.getSelectedFile(), false);
-						}
-					};
-                                        maxBonesWeightsPanel = new NumberConfigPanel(this, I_maxBoneWeightPerVertex, configPanel,
-                                                "Max Bone Weights per vertex", 4, 1, 50, 1){
-						@Override
-						protected void onChange() {
-							if(fileChooser.isAutomaticPreview())
-								previewFile(fileChooser.getSelectedFile(), false);
-						}
-					};
-                                        JPanel packBase = new JPanel();
-                                        configPanel.add(packBase);
-                                        packVertexColors = new BooleanConfigPanel(this, packBase, "Pack vertex colors to one float", B_packVertexColorsToOneFloat,
-                                                false){
-						@Override
-						protected void onChange() {
-							if (fileChooser.isAutomaticPreview())
-								previewFile(fileChooser.getSelectedFile(), false);
-						}
-					};
-                                        outputFileTypeBox = new ComboStringConfigPanel(this, S_outputFileType, configPanel,
-                                                "Output Format", "G3DB", new String[]{"G3DB", "G3DJ"}) {
-                                                @Override
-                                                protected void onChange() {
-                                                        refreshConvertButtonText();
-                                                }
-                                        };
+					}
+				});
+				aboutPanel.add(githubUrlButton, BorderLayout.SOUTH);
 
-                                        JPanel buttonBase = new JPanel();
-                                        configPanel.add(buttonBase);
-                                        convertButton = new JButton("Choose a file to convert");
-                                        buttonBase.add(convertButton);
-                                        convertButton.setPreferredSize(new Dimension(400, 50));
-                                        refreshConvertButtonText();
-                                        convertButton.addActionListener(new ActionListener() {
-                                                @Override
-                                                public void actionPerformed(ActionEvent e) {
-                                                        previewFile(fileChooser.getSelectedFile(), false);
-                                                }
-                                        });
+				mainTabbedPane.addTab("About", null, aboutScrollPane, "About");
 
-
-                                }
-                                // Viewport Settings
-                                {
-
-                                        JPanel viewportSettingsPanel = new JPanel();
-                                        JScrollPane viewportSettingsPanelScrollPane = new JScrollPane(viewportSettingsPanel);
-                                        westLowerToolPane.addTab("Viewport Settings", null, viewportSettingsPanelScrollPane, "Viewport Settings");
-                                        BoxLayout bl = new BoxLayout(viewportSettingsPanel, BoxLayout.PAGE_AXIS);
-                                        viewportSettingsPanel.setLayout(bl);
-
-                                        JPanel baseEnvPanel = new JPanel();
-                                        viewportSettingsPanel.add(baseEnvPanel);
-                                        environmentLightingBox = new BooleanConfigPanel(this, baseEnvPanel, "Environment Lighting", B_environmentLighting,
-                                                true) {
-                                                @Override
-                                                protected void onChange() {
-                                                        modelPreviewApp.environmentLightingEnabled = isSelected();
-                                                }
-                                        };
-
-                                        JPanel baseBackFacePanel = new JPanel();
-                                        viewportSettingsPanel.add(baseBackFacePanel);
-                                        backFaceCullingBox = new BooleanConfigPanel(this, baseBackFacePanel, "Back Face Culling", B_backFaceCulling,
-                                                true) {
-                                                @Override
-                                                protected void onChange() {
-                                                        Gdx.app.postRunnable(new Runnable() {
-                                                                @Override
-                                                                public void run() {
-                                                                        modelPreviewApp.setBackFaceCulling(isSelected());
-                                                                }
-                                                        });
-                                                }
-                                        };
-                                        backFaceCullingBox.checkBox.setToolTipText("mat.set(new IntAttribute(IntAttribute.CullFace, 0));");
-
-
-                                        JPanel baseAlphaBlending = new JPanel();
-                                        viewportSettingsPanel.add(baseAlphaBlending);
-                                        alphaBlendingBox = new BooleanConfigPanel(this, baseAlphaBlending, "Alpha Blending", B_alphaBlending,
-                                                true) {
-                                                @Override
-                                                protected void onChange() {
-                                                        Gdx.app.postRunnable(new Runnable() {
-                                                                @Override
-                                                                public void run() {
-                                                                        modelPreviewApp.setAlphaBlending(isSelected());
-                                                                }
-                                                        });
-                                                }
-                                        };
-                                        alphaBlendingBox.checkBox.setToolTipText("mat.set(new BlendingAttribute(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA));");
-
-
-                                        JPanel baseAlphaTest = new JPanel();
-                                        viewportSettingsPanel.add(baseAlphaTest);
-                                        alphaTestBox = new BooleanIntegerConfigPanel(this, baseAlphaTest, "Alpha Test",
-                                                B_alphaTest, false,
-                                                I_alphaTest, 50, 0,100, 1) {
-                                                @Override
-                                                protected void onChange() {
-                                                        Gdx.app.postRunnable(new Runnable() {
-                                                                @Override
-                                                                public void run() {
-                                                                        if(getBooleanValue())
-                                                                                modelPreviewApp.setAlphaTest(getIntegerValue()/100f);
-                                                                        else
-                                                                                modelPreviewApp.setAlphaTest(-1f);
-                                                                }
-                                                        });
-                                                }
-                                        };
-                                        alphaTestBox.checkBox.setToolTipText("mat.set(new FloatAttribute(FloatAttribute.AlphaTest, 0.5f));");
-
-
-
-
-                                        JPanel baseAnimPanel = new JPanel();
-                                        viewportSettingsPanel.add(baseAnimPanel);
-                                        baseAnimPanel.add(new JLabel("Animation: "));
-                                        animComboBox = new JComboBox();
-                                        baseAnimPanel.add(animComboBox);
-
-                                        animComboBox.setRenderer(new BasicComboBoxRenderer(){
-                                                @Override
-                                                public Component getListCellRendererComponent(JList list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
-                                                        if(value == null){
-                                                                setText("<No Animation>");
-                                                        }else{
-                                                                Animation anim = (Animation) value;
-                                                                setText(anim.id+"  -  "+anim.duration);
-                                                        }
-                                                        return this;
-                                                }
-                                        });
-
-                                        animComboBox.addItem(null);
-
-
-                                        animComboBox.addActionListener(new ActionListener() {
-                                                @Override
-                                                public void actionPerformed(ActionEvent e) {
-
-                                                        modelPreviewApp.setAnimation((Animation)animComboBox.getSelectedItem());
-                                                }
-                                        });
-
-
-                                        JPanel baseCamPanel = new JPanel();
-                                        viewportSettingsPanel.add(baseCamPanel);
-                                        JButton resetCamButton = new JButton("Reset Camera");
-                                        baseCamPanel.add(resetCamButton);
-                                        resetCamButton.addActionListener(new ActionListener() {
-                                                @Override
-                                                public void actionPerformed(ActionEvent e) {
-                                                        Gdx.app.postRunnable(new Runnable() {
-                                                                @Override
-                                                                public void run() {
-                                                                        modelPreviewApp.resetCam();
-                                                                }
-                                                        });
-                                                }
-                                        });
-
-                                }
-
-                                // Output Console
-                                {
-                                        outputTextPane = new JTextPane();
-                                        outputTextScrollPane = new JScrollPane(outputTextPane);
-                                        westLowerToolPane.addTab("Output Console", null, outputTextScrollPane, "Output");
-                                }
-
-                        }
+			}
                 }
 
 
@@ -399,20 +440,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
                 }
         }
 
-        protected void refreshConvertButtonText() {
-                if (convertButton == null) {
-                        return;
-                }
-                if (fileChooser.isFileCanBeConverted(fileChooser.getSelectedFile())) {
-                        String ext = outputFileTypeBox.getValue().toLowerCase();
-                        String val = DesktopLauncher.stripExtension(fileChooser.getSelectedFile().getName()) + "." + ext;
-                        convertButton.setText("Convert to: " + val);
-                        convertButton.setEnabled(true);
-                } else {
-                        convertButton.setText("Choose a file to convert");
-                        convertButton.setEnabled(false);
-                }
-        }
+
 
         private void logText(final String text) {
                 SwingUtilities.invokeLater(new Runnable() {
@@ -422,7 +450,8 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
                                         System.out.println(text);
                                         return;
                                 }
-                                outputTextPane.setText(outputTextPane.getText() + "\n" + text);
+                                //outputTextPane.setText(outputTextPane.getText() + "\n" + text);
+				outputTextPane.setText(text);
                         }
                 });
         }
@@ -452,7 +481,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
                                         return;
                                 }
                                 outputTextPane.setText(outputTextPane.getText() + "\n" + text);
-                                westLowerToolPane.setSelectedComponent(outputTextScrollPane);
+                                mainTabbedPane.setSelectedComponent(outputTextScrollPane);
                         }
                 });
         }
@@ -469,12 +498,12 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
                 String msgAddition = files.size()==1 && files.get(0).isDirectory() ? " in "+files.get(0).getName() : "";
                 final String srcExtension = (String) JOptionPane.showInputDialog(
                         frame,
-                        "Convert all files"+msgAddition+" to "+dstExtension+" that have the following extension:\n\n WARNING: this will start converting your files and cannot be undone!",
+                        "Convert all files" + msgAddition + " to " + dstExtension + " that have the following extension:\n\n WARNING: this will start converting your files and cannot be undone!",
                         "Batch model conversion",
                         JOptionPane.QUESTION_MESSAGE,
                         null,
                         options,
-                        prefs.get(S_batchConvertFileType,".fbx"));
+                        prefs.get(S_batchConvertFileType, ".fbx"));
 
 
 
@@ -484,7 +513,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 
                 prefs.put(S_batchConvertFileType,srcExtension);
 
-                westLowerToolPane.setSelectedComponent(outputTextScrollPane);
+                mainTabbedPane.setSelectedComponent(outputTextScrollPane);
                 logText("---------Begin Batch File Conversion");
 
                 threadPool.submit(new Callable<Void>() {

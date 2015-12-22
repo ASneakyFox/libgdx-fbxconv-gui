@@ -25,14 +25,19 @@ public class FileChooserSideBar {
         BasicFileFilter[] fileFilters;
         //private BooleanConfigPanel alwaysConvert;
 	private BooleanConfigPanel automaticPreviewBox;
-        private JButton previewFileButton;
+        private JButton previewFileButton, convertButton;
 
         private PropertyChangeListener selectedFilePropertyChange;
 
         public FileChooserSideBar(final DesktopLauncher desktopLauncher,JPanel parentPanel) {
+
+		JPanel chooserBasePanel = new JPanel(new BorderLayout());
+		parentPanel.add(chooserBasePanel);
+
+
                 this.desktopLauncher = desktopLauncher;
                 fileChooser = new JFileChooser();
-                parentPanel.add(fileChooser, BorderLayout.CENTER);
+		chooserBasePanel.add(fileChooser, BorderLayout.CENTER);
                 fileChooser.setDialogTitle("Choose Assets Directory");
                 fileChooser.setDialogType(JFileChooser.CUSTOM_DIALOG);
                 fileChooser.setControlButtonsAreShown(false);
@@ -91,7 +96,7 @@ public class FileChooserSideBar {
                 selectedFilePropertyChange = new PropertyChangeListener() {
                         @Override
                         public void propertyChange(PropertyChangeEvent evt) {
-                                desktopLauncher.refreshConvertButtonText();
+                                refreshConvertButtonText();
 				if(automaticPreviewBox.isSelected())
 					desktopLauncher.previewFile(fileChooser.getSelectedFile(), true);
 
@@ -105,38 +110,7 @@ public class FileChooserSideBar {
                 // File preview options
                 {
                         JPanel westSouthPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-                        parentPanel.add(westSouthPanel, BorderLayout.SOUTH);
-
-                        JButton aboutButton = new JButton("About");
-                        westSouthPanel.add(aboutButton);
-
-                        aboutButton.addActionListener(new ActionListener() {
-                                @Override
-                                public void actionPerformed(ActionEvent e) {
-                                        Object[] options = {
-                                                "View on Github",
-                                                "Ok"};
-                                        int n = JOptionPane.showOptionDialog(desktopLauncher.frame,
-                                                "This is a simple GUI created by Daniel Strong to help make it easier get your 3D models ready for your LibGDX game" +
-                                                        "\n\n" +
-                                                        "\nIf you need help or want more information about this software then visit its Github page.",
-                                                "About LibGDX fbx-conv Gui",
-                                                JOptionPane.YES_NO_OPTION,
-                                                JOptionPane.QUESTION_MESSAGE,
-                                                null,
-                                                options,
-                                                options[1]);
-					if(n==0)
-					{
-						try {
-							Desktop.getDesktop().browse(new URI("http://asneakyfox.github.io/libgdx-fbxconv-gui/"));
-						} catch (Throwable t) {
-							JOptionPane.showMessageDialog(desktopLauncher.frame,"I couldnt open your browser while trying to navigae to:\n\nhttp://asneakyfox.github.io/libgdx-fbxconv-gui/");
-						}
-					}
-
-                                }
-                        });
+			chooserBasePanel.add(westSouthPanel, BorderLayout.SOUTH);
 
 			/*
                         alwaysConvert= new BooleanConfigPanel(desktopLauncher, westSouthPanel, "Convert on Drag n' Drop", DesktopLauncher.B_alwaysConvert, true){
@@ -167,6 +141,16 @@ public class FileChooserSideBar {
                                 }
                         });
 
+
+                        convertButton = new JButton("Convert");
+			westSouthPanel.add(convertButton);
+			convertButton.addActionListener(new ActionListener() {
+				@Override
+				public void actionPerformed(ActionEvent e) {
+					desktopLauncher.previewFile(fileChooser.getSelectedFile(), false);
+				}
+			});
+
                 }
 
 
@@ -182,13 +166,28 @@ public class FileChooserSideBar {
 
                 //boolean convertInsteadOfPreview = setFromDragnDrop && alwaysConvert.isSelected();
                 fileChooser.setSelectedFile(file);
-		desktopLauncher.refreshConvertButtonText();
+		refreshConvertButtonText();
 		if(automaticPreviewBox.isSelected())
 			desktopLauncher.previewFile(fileChooser.getSelectedFile(), true); // !convertInsteadOfPreview
 
                 fileChooser.addPropertyChangeListener("SelectedFileChangedProperty",selectedFilePropertyChange );
 
         }
+
+	protected void refreshConvertButtonText() {
+		if (convertButton == null) {
+			return;
+		}
+		if (isFileCanBeConverted(fileChooser.getSelectedFile())) {
+			String ext = desktopLauncher.outputFileTypeBox.getValue().toLowerCase();
+			String val = DesktopLauncher.stripExtension(fileChooser.getSelectedFile().getName()) + "." + ext;
+			convertButton.setText("Convert to: " + val);
+			convertButton.setEnabled(true);
+		} else {
+			convertButton.setText("Choose a file to convert");
+			convertButton.setEnabled(false);
+		}
+	}
 
 	public boolean isAutomaticPreview(){
 		return automaticPreviewBox.isSelected();
