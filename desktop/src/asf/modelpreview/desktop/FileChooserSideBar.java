@@ -96,10 +96,7 @@ public class FileChooserSideBar {
                 selectedFilePropertyChange = new PropertyChangeListener() {
                         @Override
                         public void propertyChange(PropertyChangeEvent evt) {
-                                refreshConvertButtonText();
-				if(automaticPreviewBox.isSelected())
-					desktopLauncher.previewFile(fileChooser.getSelectedFile(), true);
-
+				onSelectedFileChanged();
                         }
                 };
                 fileChooser.addPropertyChangeListener("SelectedFileChangedProperty",selectedFilePropertyChange );
@@ -156,23 +153,24 @@ public class FileChooserSideBar {
 
 
         }
+
         public void setSelectedFile(File file){
-                setSelectedFile(file, false);
-        }
-        public void setSelectedFile(File file, boolean setFromDragnDrop){
-
-                // Remove and re-add the listener to avoid issues with redropping the same file
+                // I dont use the property change listener here because if you
+                // drag n drop the same file twice, it wont fire the
+                // property change listener..
                 fileChooser.removePropertyChangeListener("SelectedFileChangedProperty",selectedFilePropertyChange);
-
-                //boolean convertInsteadOfPreview = setFromDragnDrop && alwaysConvert.isSelected();
                 fileChooser.setSelectedFile(file);
-		refreshConvertButtonText();
-		if(automaticPreviewBox.isSelected())
-			desktopLauncher.previewFile(fileChooser.getSelectedFile(), true); // !convertInsteadOfPreview
-
+		onSelectedFileChanged();
                 fileChooser.addPropertyChangeListener("SelectedFileChangedProperty",selectedFilePropertyChange );
 
         }
+
+	private void onSelectedFileChanged()
+	{
+		refreshConvertButtonText();
+		if(automaticPreviewBox.isSelected())
+			desktopLauncher.previewFile(fileChooser.getSelectedFile(), true); // !convertInsteadOfPreview
+	}
 
 	protected void refreshConvertButtonText() {
 		if (convertButton == null) {

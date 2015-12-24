@@ -441,19 +441,43 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
         }
 
 
+	private void logTextClear(){
+		SwingUtilities.invokeLater(new Runnable() {
+			@Override
+			public void run() {
+				if (outputTextPane == null) {
+					System.out.println();
+					return;
+				}
+				outputTextPane.setText("");
+			}
+		});
+	}
+
+	private void logTextClear(final String text){
+		SwingUtilities.invokeLater(new Runnable() {
+			@Override
+			public void run() {
+				if (outputTextPane == null) {
+					System.out.println(text);
+					return;
+				}
+				outputTextPane.setText(text);
+			}
+		});
+	}
 
         private void logText(final String text) {
                 SwingUtilities.invokeLater(new Runnable() {
-                        @Override
-                        public void run() {
-                                if (outputTextPane == null) {
-                                        System.out.println(text);
-                                        return;
-                                }
-                                //outputTextPane.setText(outputTextPane.getText() + "\n" + text);
-				outputTextPane.setText(text);
-                        }
-                });
+			@Override
+			public void run() {
+				if (outputTextPane == null) {
+					System.out.println(text);
+					return;
+				}
+				outputTextPane.setText(outputTextPane.getText() + "\n" + text);
+			}
+		});
         }
 
         private void logTextError(Exception e) {
@@ -469,27 +493,27 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
                 StringWriter sw = new StringWriter();
                 PrintWriter pw = new PrintWriter(sw);
                 e.printStackTrace(pw);
-                logTextError(sw.toString()+"\n"+hintMessage);
+                logTextError(sw.toString() + "\n" + hintMessage);
         }
 
         private void logTextError(final String text) {
                 SwingUtilities.invokeLater(new Runnable() {
-                        @Override
-                        public void run() {
-                                if (outputTextPane == null) {
-                                        System.err.println(text);
-                                        return;
-                                }
-                                outputTextPane.setText(outputTextPane.getText() + "\n" + text);
-                                mainTabbedPane.setSelectedComponent(outputTextScrollPane);
-                        }
-                });
+			@Override
+			public void run() {
+				if (outputTextPane == null) {
+					System.err.println(text);
+					return;
+				}
+				outputTextPane.setText(outputTextPane.getText() + "\n" + text);
+				mainTabbedPane.setSelectedComponent(outputTextScrollPane);
+			}
+		});
         }
 
         private void convertFilesAsBatch(final List<File> files) {
                 if(files.size() == 1 && !files.get(0).isDirectory()){
                         // a single non directory file was chosen, lets just select it
-                        fileChooser.setSelectedFile(files.get(0), true);
+                        fileChooser.setSelectedFile(files.get(0));
                         return;
                 }
 
@@ -511,23 +535,54 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
                         return;
                 }
 
-                prefs.put(S_batchConvertFileType,srcExtension);
+                prefs.put(S_batchConvertFileType, srcExtension);
 
                 mainTabbedPane.setSelectedComponent(outputTextScrollPane);
-                logText("---------Begin Batch File Conversion");
 
-                threadPool.submit(new Callable<Void>() {
-                        @Override
-                        public Void call() throws Exception {
-                                for(File file : files){
-                                        convertFileRecursive(file, srcExtension);
-                                }
-                                return null;
-                        }
-                });
 
+                threadPool.submit(new PreviewMultipleFilesCallable(files, srcExtension, dstExtension));
 
         }
+
+	private class PreviewMultipleFilesCallable implements Callable<Void>{
+		final List<File> files;
+		final String srcExtension;
+		final String dstExtension;
+
+		public PreviewMultipleFilesCallable(List<File> files, String srcExtension, String dstExtension) {
+			this.files = files;
+			this.srcExtension = srcExtension;
+			this.dstExtension = dstExtension;
+		}
+
+		@Override
+		public Void call() throws Exception {
+			logTextClear("Batch Convert: "+srcExtension+" -> "+dstExtension);
+			for (File file : files) {
+				convertFileRecursive(file, srcExtension);
+			}
+			return null;
+		}
+	}
+
+	private void convertFileRecursive(File f, String srcExtension){
+
+		if(f.isDirectory()){
+			File[] files = f.listFiles();
+			for (File file : files) {
+				convertFileRecursive(file, srcExtension);
+			}
+		}else{
+			if(f.getName().toLowerCase().endsWith(srcExtension)){
+				File outputFile = convertFile(f, false, false);
+				if(outputFile != null && outputFile != f){
+					logText(f.getAbsolutePath()+ "--> "+outputFile.getName());
+				}else{
+					logTextError(f.getAbsolutePath() + "--> Error, could not convert!");
+				}
+			}
+		}
+	}
 
         protected void previewFile(final File f, final boolean tempPreview) {
 
@@ -592,26 +647,22 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 		}
 	}
 
-        private void convertFileRecursive(File f, String srcExtension){
 
-                if(f.isDirectory()){
-                        File[] files = f.listFiles();
-                        for (File file : files) {
-                                convertFileRecursive(file, srcExtension);
-                        }
-                }else{
-                        if(f.getName().toLowerCase().endsWith(srcExtension)){
-                                File outputFile = convertFile(f, false, false);
-                                if(outputFile != null && outputFile != f){
-                                        logText(f.getAbsolutePath()+ "--> "+outputFile.getName());
-                                }else{
-                                        logTextError(f.getAbsolutePath() + "--> Error, could not convert!");
-                                }
-                        }
-                }
-        }
 
         private File convertFile(File f, boolean tempPreview, boolean logDetailedOutput) {
+		if(logDetailedOutput)
+		{
+			if(f!=null && !f.isDirectory()){
+				if(tempPreview)
+					logTextClear("Previewing: "+f.getName());
+				else
+					logTextClear("Converting: "+f.getName());
+			}else{
+				logTextClear();
+			}
+		}
+
+
                 if (f == null || f.isDirectory()) {
                         return null; // not a model file
                 }
@@ -633,8 +684,10 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
                 File convertedFile = new File(dstPath);
                 try {
 
-                        if(logDetailedOutput)
-                                logText("-----------------------------------");
+                        if(logDetailedOutput){
+				//logText("-----------------------------------");
+			}
+
                         ProcessBuilder p = new ProcessBuilder(fbxConvLocationBox.getAbsolutePath(), "-v");
                         if (flipTextureCoords.isSelected())
                                 p.command().add("-f");
@@ -648,11 +701,15 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
                         p.command().add(maxBonesWeightsPanel.getString());
                         p.command().add(srcPath);
                         p.command().add(dstPath);
-                        if(logDetailedOutput)
-                                logText(shortenCommand(p.command(), fbxConvLocationBox.getName(), f.getName(), convertedFile.getName()) + "\n");
+                        if(logDetailedOutput){
+				logText("\n"+shortenCommand(p.command(), fbxConvLocationBox.getName(), f.getName(), convertedFile.getName()) + "\n");
+			}
+
                         String output = processOutput(p.start());
-                        if(logDetailedOutput)
-                                logText(output);
+                        if(logDetailedOutput){
+				logText(output);
+			}
+
                 } catch (IOException e) {
                         boolean possibleBadInstallation;
                         try {
