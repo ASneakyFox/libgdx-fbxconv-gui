@@ -20,7 +20,6 @@ import javax.swing.JSeparator;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextPane;
-import javax.swing.SpringLayout;
 import javax.swing.SwingUtilities;
 import javax.swing.TransferHandler;
 import javax.swing.UIManager;
@@ -68,7 +67,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
         private FileChooserFbxConv fbxConvLocationBox;
         private BooleanConfigPanel flipTextureCoords, packVertexColors;
         private NumberConfigPanel maxVertxPanel, maxBonesPanel, maxBonesWeightsPanel;
-        protected ComboStringConfigPanel outputFileTypeBox;
+        protected ComboStringConfigPanel inputFileTypeBox, outputFileTypeBox;
         private BooleanConfigPanel environmentLightingBox, backFaceCullingBox, alphaBlendingBox;
         private BooleanIntegerConfigPanel alphaTestBox;
         private JComboBox<Animation> animComboBox;
@@ -87,6 +86,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
         private static final String I_maxVertPerMesh = "I_maxVertPerMesh";
         private static final String I_maxBonePerNodepart = "I_maxBonePerNodepart";
         private static final String I_maxBoneWeightPerVertex = "I_maxBoneWeightPerVertex";
+	private static final String S_inputFileType = "S_inputFileType";
         private static final String S_outputFileType = "S_outputFileType";
         private static final String S_batchConvertFileType = "S_batchConvertFileType";
         private static final String B_environmentLighting = "B_environmentLighting";
@@ -146,7 +146,13 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
                                 if(data.isEmpty()){
                                         return false;
                                 }
-                                convertFilesAsBatch(data);
+
+				File[] filesToSelect = new File[data.size()];
+				for (int i = 0; i < data.size(); i++) {
+					filesToSelect[i] = data.get(i);
+				}
+				fileChooser.setSelectedFile(filesToSelect);
+                                //convertFilesAsBatch(data);
                                 return true;
                         }
 
@@ -196,7 +202,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 					@Override
 					protected void onChange() {
 						if(fileChooser.isAutomaticPreview())
-							previewFile(fileChooser.getSelectedFile(), false);
+							displaySelectedFiles(true);
 					}
 				};
 
@@ -205,7 +211,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 					@Override
 					protected void onChange() {
 						if(fileChooser.isAutomaticPreview())
-							previewFile(fileChooser.getSelectedFile(), false);
+							displaySelectedFiles(true);
 					}
 				};
 				maxBonesPanel = new NumberConfigPanel(this, I_maxBonePerNodepart, configPanel,
@@ -213,7 +219,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 					@Override
 					protected void onChange() {
 						if(fileChooser.isAutomaticPreview())
-							previewFile(fileChooser.getSelectedFile(), false);
+							displaySelectedFiles(true);
 					}
 				};
 				maxBonesWeightsPanel = new NumberConfigPanel(this, I_maxBoneWeightPerVertex, configPanel,
@@ -221,7 +227,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 					@Override
 					protected void onChange() {
 						if(fileChooser.isAutomaticPreview())
-							previewFile(fileChooser.getSelectedFile(), false);
+							displaySelectedFiles(true);
 					}
 				};
 				JPanel packBase = new JPanel();
@@ -231,9 +237,10 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 					@Override
 					protected void onChange() {
 						if (fileChooser.isAutomaticPreview())
-							previewFile(fileChooser.getSelectedFile(), false);
+							displaySelectedFiles(true);
 					}
 				};
+
 				outputFileTypeBox = new ComboStringConfigPanel(this, S_outputFileType, configPanel,
 					"Output Format", "G3DB", new String[]{"G3DB", "G3DJ"}) {
 					@Override
@@ -510,10 +517,17 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 		});
         }
 
+	/**
+	 *
+	 * @param files
+	 * @deprecated batch conversions are done by clicking the convert button in the file chooser now.
+	 */
         private void convertFilesAsBatch(final List<File> files) {
                 if(files.size() == 1 && !files.get(0).isDirectory()){
                         // a single non directory file was chosen, lets just select it
-                        fileChooser.setSelectedFile(files.get(0));
+			File[] fs = new File[1];
+			fs[0] = files.get(0);
+                        fileChooser.setSelectedFile(fs);
                         return;
                 }
 
@@ -540,16 +554,16 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
                 mainTabbedPane.setSelectedComponent(outputTextScrollPane);
 
 
-                threadPool.submit(new PreviewMultipleFilesCallable(files, srcExtension, dstExtension));
+                threadPool.submit(new ConvertMultipleFilesCallable(files, srcExtension, dstExtension));
 
         }
 
-	private class PreviewMultipleFilesCallable implements Callable<Void>{
+	private class ConvertMultipleFilesCallable implements Callable<Void>{
 		final List<File> files;
 		final String srcExtension;
 		final String dstExtension;
 
-		public PreviewMultipleFilesCallable(List<File> files, String srcExtension, String dstExtension) {
+		public ConvertMultipleFilesCallable(List<File> files, String srcExtension, String dstExtension) {
 			this.files = files;
 			this.srcExtension = srcExtension;
 			this.dstExtension = dstExtension;
@@ -584,11 +598,93 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 		}
 	}
 
+	/**
+	 * shows the files chosen that are selected within the FIleChooser in the 3d Window
+	 * @param tempPreview if true the output files are temporary and will be deleted, if false they will be kept (ie for the conversion function of the program)
+	 */
+	protected void displaySelectedFiles(boolean tempPreview){
+		File[] files = fileChooser.getSelectedFilesToConvert();
+		threadPool.submit(new PreviewFilesCallable(files, tempPreview));
+	}
+
+	private class PreviewFilesCallable implements Callable<Void>{
+
+		private final File[] files;
+		private final boolean tempPreview;
+
+		public PreviewFilesCallable(File[] files, boolean tempPreview) {
+			this.files = files;
+			this.tempPreview = tempPreview;
+		}
+
+		@Override
+		public Void call() throws Exception {
+			Gdx.app.postRunnable(new Runnable() {
+				@Override
+				public void run() {
+					modelPreviewApp.showLoadingText("Loading...");
+				}
+			});
+
+
+			final File[] outputFiles = new File[files.length];
+
+			currentPreviewNum=0;
+			for (int i = 0; i < files.length; i++) {
+				final File newF = convertFile(files[i], tempPreview, true);
+				outputFiles[i] = newF;
+			}
+
+			Gdx.app.postRunnable(new Runnable() {
+				@Override
+				public void run() {
+					for (int i = 0; i < outputFiles.length; i++) {
+						File srcF = files[i];
+						File newF = outputFiles[i];
+
+						if (newF == null || newF.isDirectory()) {
+							modelPreviewApp.previewFile(null);
+						} else {
+							try {
+								modelPreviewApp.previewFile(newF);
+							} catch (GdxRuntimeException ex) {
+								logTextError("Error while previewing file: " + srcF.getName());
+								logTextError(ex);
+								modelPreviewApp.previewFile(null);
+							}
+
+						}
+
+						// only delete newF if it is a temp file that was made in convertFile
+						if (tempPreview && newF != srcF && newF != null && !newF.isDirectory()) {
+							newF.delete();
+						}
+
+					}
+					SwingUtilities.invokeLater(new Runnable() {
+						@Override
+						public void run() {
+							fileChooser.refreshFileChooserList();
+						}
+					});
+				}
+			});
+			return null;
+		}
+	}
+
+	/**
+	 *
+	 * @param f
+	 * @param tempPreview
+	 * @deprecated use displaySelectedFiles instead
+	 */
         protected void previewFile(final File f, final boolean tempPreview) {
 
                 threadPool.submit(new PreviewFileCallable(f, tempPreview));
         }
 
+	@Deprecated
 	private class PreviewFileCallable implements Callable<Void>{
 
 		private final File f;
@@ -612,6 +708,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 			});
 
 
+			currentPreviewNum=0;
 			final File newF = convertFile(f, tempPreview, true);
 
 			Gdx.app.postRunnable(new Runnable() {
@@ -648,6 +745,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 	}
 
 
+	private int currentPreviewNum =0;
 
         private File convertFile(File f, boolean tempPreview, boolean logDetailedOutput) {
 		if(logDetailedOutput)
@@ -680,8 +778,15 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 
                 File targetDir = f.getParentFile();
                 String dstExtension = tempPreview || outputFileTypeBox.getValue().equals("G3DJ") ? ".g3dj" : ".g3db";
-                String dstPath = targetDir + fbxConvLocationBox.dirSeperator + (tempPreview ? "libgdx-model-viewer.temp" : stripExtension(f.getName())) + dstExtension;
-                File convertedFile = new File(dstPath);
+                String dstPath;
+
+		if(tempPreview){
+			dstPath = targetDir + fbxConvLocationBox.dirSeperator + "libgdx-model-viewer."+currentPreviewNum+".temp" + dstExtension;
+			currentPreviewNum++;
+		}else{
+			dstPath = targetDir + fbxConvLocationBox.dirSeperator + stripExtension(f.getName()) + dstExtension;
+		}
+		File convertedFile = new File(dstPath);
                 try {
 
                         if(logDetailedOutput){

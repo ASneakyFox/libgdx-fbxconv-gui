@@ -154,8 +154,6 @@ public class ModelPreviewApp extends ApplicationAdapter {
 
 
                 onModelLoaded(model);
-
-
         }
 
         public void showLoadingText(String text) {
