@@ -179,7 +179,6 @@ public class ModelPreviewApp extends ApplicationAdapter {
                 camController = new CameraInputController(null);
                 Gdx.input.setInputProcessor(camController);
 
-
                 FreetypeFontLoader.FreeTypeFontLoaderParameter fontParameter = new FreetypeFontLoader.FreeTypeFontLoaderParameter();
                 fontParameter.fontFileName = "fonts/ariblk.ttf";
                 fontParameter.fontParameters.size = Math.round(50f * Gdx.graphics.getDensity());

@@ -10,10 +10,10 @@ allprojects {
     apply plugin: "eclipse"
     apply plugin: "idea"
 
-    version = '1.4'
+    version = '1.5'
     ext {
         appName = 'modelpreview'
-        gdxVersion = '1.7.2'
+        gdxVersion = '1.9.5'
         roboVMVersion = '1.12.0'
     }
 
