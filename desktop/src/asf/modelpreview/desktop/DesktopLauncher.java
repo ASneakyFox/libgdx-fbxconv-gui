@@ -33,7 +33,6 @@ import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.Toolkit;
 import java.awt.datatransfer.DataFlavor;
-import java.awt.datatransfer.Transferable;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
@@ -60,7 +59,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 	}
 
 	final Preferences prefs;
-	private final ExecutorService threadPool;
+	final ExecutorService threadPool;
 	final JFrame frame;
 
 	private FileChooserSideBar fileChooser;
@@ -99,7 +98,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 	private static final String I_alphaTest = "I_alphaTest";
 
 	private static final String
-		KEY_PREFERENCES = "LibGDXModelPreviewUtility1",
+		KEY_PREFERENCES = "LibGDXModelPreviewUtility2",
 		LBL_WINDOW_TITLE = "LibGDX Model Preview Utility",
 		LBL_FBX_CONV_NOT_CONFIGURED = "Fbx-conv is not configured correctly.\n\nVerify the location is correct on the Config tab.";
 
@@ -129,7 +128,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 		UIManager.put("FileChooser.readOnly", Boolean.TRUE);
 
 		frame = new JFrame(LBL_WINDOW_TITLE);
-		frame.setTransferHandler(transferHandler);
+		frame.setTransferHandler(new DnDTransferHandler());
 		frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
 		final Container container = frame.getContentPane();
 		container.setLayout(new BoxLayout(container, BoxLayout.LINE_AXIS));
@@ -156,13 +155,9 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 
 			// fbx-conv Configuration
 			{
-				JPanel configPanel = new JPanel();
-				BoxLayout bl = new BoxLayout(configPanel, BoxLayout.PAGE_AXIS);
-				configPanel.setLayout(bl);
-				JScrollPane mainScrollPane = new JScrollPane(configPanel);
+				fbxConvLocationBox = new FileChooserFbxConv(this, S_fbxConvLocation);
+				JScrollPane mainScrollPane = new JScrollPane(fbxConvLocationBox.basePane);
 				mainTabbedPane.addTab("Config", null, mainScrollPane, "Configure fbx-conv");
-				fbxConvLocationBox = new FileChooserFbxConv(this, S_fbxConvLocation, configPanel);
-
 			}
 
 			// File Browser
@@ -442,7 +437,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 	}
 
 
-	private void logTextClear() {
+	void logTextClear() {
 		SwingUtilities.invokeLater(new Runnable() {
 			@Override
 			public void run() {
@@ -455,7 +450,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 		});
 	}
 
-	private void logTextClear(final String text) {
+	void logTextClear(final String text) {
 		SwingUtilities.invokeLater(new Runnable() {
 			@Override
 			public void run() {
@@ -468,7 +463,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 		});
 	}
 
-	private void logText(final String text) {
+	void logText(final String text) {
 		SwingUtilities.invokeLater(new Runnable() {
 			@Override
 			public void run() {
@@ -481,7 +476,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 		});
 	}
 
-	private void logTextError(Exception e) {
+	void logTextError(Throwable e) {
 
 		StringWriter sw = new StringWriter();
 		PrintWriter pw = new PrintWriter(sw);
@@ -489,7 +484,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 		logTextError(sw.toString());
 	}
 
-	private void logTextError(Exception e, String hintMessage) {
+	void logTextError(Throwable e, String hintMessage) {
 
 		StringWriter sw = new StringWriter();
 		PrintWriter pw = new PrintWriter(sw);
@@ -497,7 +492,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 		logTextError(sw.toString() + "\n" + hintMessage);
 	}
 
-	private void logTextError(final String text) {
+	void logTextError(final String text) {
 		SwingUtilities.invokeLater(new Runnable() {
 			@Override
 			public void run() {
@@ -794,7 +789,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 				//logText("-----------------------------------");
 			}
 
-			ProcessBuilder p = new ProcessBuilder(fbxConvLocationBox.getAbsolutePath(), "-v");
+			ProcessBuilder p = new ProcessBuilder(fbxConvLocationBox.getValue(), "-v");
 			if (flipTextureCoords.isSelected())
 				p.command().add("-f");
 			if (packVertexColors.isSelected())
@@ -808,7 +803,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 			p.command().add(srcPath);
 			p.command().add(dstPath);
 			if (logDetailedOutput) {
-				logText("\n" + shortenCommand(p.command(), fbxConvLocationBox.getName(), f.getName(), convertedFile.getName()) + "\n");
+				logText("\n" + shortenCommand(p.command(), fbxConvLocationBox.getValueName(), f.getName(), convertedFile.getName()) + "\n");
 			}
 
 			String output = processOutput(p.start());
@@ -819,7 +814,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 		} catch (IOException e) {
 			boolean possibleBadInstallation;
 			try {
-				Process proc = Runtime.getRuntime().exec(fbxConvLocationBox.getAbsolutePath(), null, null);
+				Process proc = Runtime.getRuntime().exec(fbxConvLocationBox.getValue(), null, null);
 				String output = DesktopLauncher.processOutput(proc);
 				possibleBadInstallation = !output.contains("fbx-conv");
 			} catch (IOException ex) {
@@ -876,7 +871,9 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 		return val;
 	}
 
-	private final TransferHandler transferHandler = new TransferHandler() {
+	private class DnDTransferHandler extends TransferHandler {
+		// http://stackoverflow.com/questions/13597233/how-to-drag-and-drop-files-from-a-directory-in-java
+		// http://stackoverflow.com/questions/9192371/dragn-drop-files-from-the-os-to-java-application-swing
 		@Override
 		public boolean canImport(TransferSupport support) {
 			return support.isDataFlavorSupported(DataFlavor.javaFileListFlavor); // interesting ideas: http://stackoverflow.com/questions/16592166/is-the-transfer-data-for-transferables-from-outside-the-jvm-null-by-default-when
@@ -909,6 +906,5 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 				return false;
 			}
 		}
-
-	};
+	}
 }

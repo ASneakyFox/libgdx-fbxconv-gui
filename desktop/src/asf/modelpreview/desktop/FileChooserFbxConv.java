@@ -2,50 +2,52 @@ package asf.modelpreview.desktop;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
+import net.miginfocom.swing.MigLayout;
 
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
 import javax.swing.filechooser.FileFilter;
-import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
+import java.util.concurrent.Callable;
 
 /**
- * Created by Danny on 10/30/2014.
+ * Created by Daniel Strong on 10/30/2014.
  */
 public class FileChooserFbxConv {
 
-	JPanel basePane;
+
+
+	private final DesktopLauncher desktopLauncher;
 	private String fbxConvLocation;
 	private String fbxConvName;
 	/**
 	 * the filename of the fbx-conv program that should be looked for (depending on the OS)
 	 */
-	private final String fbxConvExecName;
+	private final String fbxConvExpectedName;
 	final String dirSeperator;
 
-	FileChooserFbxConv(final DesktopLauncher desktopLauncher, final String prefsKey, JPanel parentPanel) {
+	final JPanel basePane;
+	final JButton downloadFbxConvButton;
 
+	FileChooserFbxConv(final DesktopLauncher desktopLauncher, final String prefsKey) {
+		this.desktopLauncher = desktopLauncher;
 		String osName = System.getProperty("os.name").toLowerCase();
 		if (osName.contains("win")) {
-			fbxConvExecName = "fbx-conv-win32.exe";
+			fbxConvExpectedName = "fbx-conv-win32.exe";
 			dirSeperator = "\\";
 		} else if (osName.contains("mac")) {
-			fbxConvExecName = "fbx-conv-mac";
+			fbxConvExpectedName = "fbx-conv-mac";
 			dirSeperator = "/";
 		} else {
-			fbxConvExecName = "fbx-conv-lin64";
+			fbxConvExpectedName = "fbx-conv-lin64";
 			dirSeperator = "/";
 		}
 
-		basePane = new JPanel();
-		parentPanel.add(basePane);
-
-		final JTextField fbxConvLocationField = new JTextField();
-		basePane.add(fbxConvLocationField);
 		fbxConvLocation = desktopLauncher.prefs.get(prefsKey, null);
 		if (isValidFbxConvFileLocation(fbxConvLocation)) {
 			fbxConvName = new File(fbxConvLocation).getName();
@@ -53,7 +55,7 @@ public class FileChooserFbxConv {
 			// attempt to detect the fbx conv location
 			try {
 				String jarPath = FileChooserFbxConv.class.getProtectionDomain().getCodeSource().getLocation().getPath();
-				fbxConvLocation = Gdx.files.absolute(jarPath).parent().child(fbxConvExecName).file().getAbsolutePath();
+				fbxConvLocation = Gdx.files.absolute(jarPath).parent().child(fbxConvExpectedName).file().getAbsolutePath();
 				if (isValidFbxConvFileLocation(fbxConvLocation)) {
 					fbxConvName = new File(fbxConvLocation).getName();
 					desktopLauncher.prefs.put(prefsKey, fbxConvLocation);
@@ -67,14 +69,15 @@ public class FileChooserFbxConv {
 			}
 		}
 
-		fbxConvLocationField.setText(fbxConvLocation != null ? fbxConvLocation : "YOU MUST SET THE FBX-CONV LOCATION");
+
+		final JTextField fbxConvLocationField = new JTextField();
+		fbxConvLocationField.setText(fbxConvLocation != null ? fbxConvLocation : "");
 		fbxConvLocationField.setEditable(false);
-		//fbxConvLocationField.setEnabled(false);
 
 		final JFileChooser fbxConvFileChooser = new JFileChooser();
-		if (fbxConvLocation != null)
+		if (hasValidValue())
 			fbxConvFileChooser.setCurrentDirectory(new File(fbxConvLocation));
-		fbxConvFileChooser.setDialogTitle("Find the file: " + fbxConvExecName);
+		fbxConvFileChooser.setDialogTitle("Find the file: " + fbxConvExpectedName);
 		fbxConvFileChooser.setDragEnabled(false);
 		fbxConvFileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
 		fbxConvFileChooser.setAcceptAllFileFilterUsed(false);
@@ -86,7 +89,7 @@ public class FileChooserFbxConv {
 
 			@Override
 			public String getDescription() {
-				return fbxConvExecName;
+				return fbxConvExpectedName;
 			}
 		});
 
@@ -106,48 +109,69 @@ public class FileChooserFbxConv {
 				}
 			}
 		});
+
+
+		downloadFbxConvButton = new JButton("Download fbx-conv");
+		downloadFbxConvButton.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				downloadFbxConvButton.setEnabled(false);
+				desktopLauncher.threadPool.submit(new DownloadFbxConvCallable());
+			}
+		});
+
+		basePane = new JPanel();
+		MigLayout layout = new MigLayout("wrap 2");
+		basePane.setLayout(layout);
+
+		basePane.add(fbxConvLocationField, "grow");
 		basePane.add(browseFbxConvButton);
+		basePane.add(downloadFbxConvButton, "span 2");
 
+	}
 
+	private class DownloadFbxConvCallable implements Callable<Void> {
+		@Override
+		public Void call() throws Exception {
+			try{
+				//URL zipUrl = new URL("http://libgdx.badlogicgames.com/fbx-conv/fbx-conv.zip");
+				//File file = new File("/home/daniel/things/libgdx/fbx-conv-download-test");
+				//ZipTool.unpackArchive(zipUrl, file);
+				Thread.sleep(5000);
+				desktopLauncher.logText("downloaded fbx-conv");
+			} catch(Exception ex){
+				desktopLauncher.logTextError(ex, "unable to download fbx-conv");
+			}
+			SwingUtilities.invokeLater(new Runnable() {
+				@Override
+				public void run() {
+					downloadFbxConvButton.setEnabled(true);
+				}
+			});
+			return null;
+		}
 	}
 
 	private boolean isValidFbxConvFileLocation(String absolutePath) {
-		if (absolutePath == null) {
-			return false;
+		if (absolutePath != null) {
+			FileHandle absoluteFh = Gdx.files.absolute(absolutePath);
+			if (absoluteFh.exists()) {
+				String name = absolutePath.toLowerCase();
+				return name.endsWith(fbxConvExpectedName);
+			}
 		}
-		FileHandle absoluteFh = Gdx.files.absolute(absolutePath);
-		if (!absoluteFh.exists()) {
-			return false;
-		}
-		String name = absolutePath.toLowerCase();
-		return name.endsWith(fbxConvExecName);
-
-		// shouldnt try to check for a valid fbx-conv here- instead
-		// let the user choose the file, then on the output window display
-		// a suggestion with the error message saying fbx-conv might not be
-		// installed correctly..
-
-		//if (!(name.endsWith("fbx-conv-win32.exe") || name.endsWith("fbx-conv-lin64") || name.endsWith("fbx-conv-mac")))
-		//        return false;
-//                try {
-//                        Process proc = Runtime.getRuntime().exec(absolutePath,null,null);
-//                        String output = DesktopLauncher.processOutput(proc);
-//                        return output.contains("fbx-conv");
-//                } catch (IOException e) {
-//                        //e.printStackTrace();
-//                        return false;
-//                }
+		return false;
 	}
 
-	public boolean hasValidValue() {
+	boolean hasValidValue() {
 		return fbxConvLocation != null;
 	}
 
-	public String getAbsolutePath() {
+	String getValue() {
 		return fbxConvLocation;
 	}
 
-	public String getName() {
+	String getValueName() {
 		return fbxConvName;
 	}
 
