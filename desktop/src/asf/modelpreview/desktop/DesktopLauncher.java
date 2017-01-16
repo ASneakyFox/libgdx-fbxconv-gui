@@ -2,6 +2,7 @@ package asf.modelpreview.desktop;
 
 import asf.modelpreview.Log;
 import asf.modelpreview.ModelPreviewApp;
+import asf.modelpreview.ModelWorld;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.backends.lwjgl.LwjglAWTCanvas;
 import com.badlogic.gdx.backends.lwjgl.LwjglApplicationConfiguration;
@@ -117,7 +118,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 		LwjglApplicationConfiguration canvasConfig = new LwjglApplicationConfiguration();
 		LwjglApplicationConfiguration.disableAudio = true;
 		canvasConfig.samples = 2;
-		canvasConfig.initialBackgroundColor = modelPreviewApp.backgroundColor;
+		canvasConfig.initialBackgroundColor = ModelWorld.INITIAL_BACKGROUND_COLOR;
 		LwjglAWTCanvas canvas = new LwjglAWTCanvas(modelPreviewApp, canvasConfig);
 		container.add(canvas.getCanvas());
 
@@ -258,10 +259,9 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 			Gdx.app.postRunnable(new Runnable() {
 				@Override
 				public void run() {
-					modelPreviewApp.showLoadingText("Loading...");
+					modelPreviewApp.world.hudView.showLoadingText("Loading...");
 				}
 			});
-
 
 			fbxConvTool.logDetailedOutput = true;
 			fbxConvTool.displayFunction = displayFunction;
@@ -279,39 +279,54 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 				@Override
 				public void run() {
 					for (int i = 0; i < outputFiles.length; i++) {
-						File srcF = files[i];
-						File newF = outputFiles[i];
+						final File srcF = files[i];
+						final File newF = outputFiles[i];
+
+						ModelWorld.LoadableListener onLoadedAction = new ModelWorld.LoadableListener() {
+							@Override
+							public void onLoaded() {
+								// only delete newF if it is a temp file that was made in convertFile
+								// TODO: would be great to have this be apart of the FbxConvTool somehow since this is a model operation
+								// not a ui operation.
+
+								// if a file is reselectd, this could cause its temp file to be deleted before previewFile() is called.
+								// hence i now never reset the temp file number.
+								if (displayFunction == DisplayFileFunction.PreviewOnly && newF != srcF && newF != null && !newF.isDirectory()) {
+									newF.delete();
+								}
+
+								SwingUtilities.invokeLater(new Runnable() {
+									@Override
+									public void run() {
+										fileConverterSidebar.fileChooser.refreshFileChooserList();
+									}
+								});
+							}
+						};
 
 						if (newF == null || newF.isDirectory()) {
-							modelPreviewApp.previewFile(null);
+							modelPreviewApp.world.previewFile(null, onLoadedAction);
 						} else {
 							try {
-								modelPreviewApp.previewFile(newF); // TODO: this is resetting the view instead of adding each model to it
+								// TODO: this is resetting the view instead of adding each model to it
+								modelPreviewApp.world.previewFile(newF, onLoadedAction);
 							} catch (GdxRuntimeException ex) {
 								log.error("Error while previewing file: " + srcF.getName());
 								log.error(ex);
-								modelPreviewApp.previewFile(null);
+								modelPreviewApp.world.previewFile(null, onLoadedAction);
 							}
 
 						}
 
-						// TODO: i got an error before not being able to preview the file because it didnt exist
-						// seems to be a concurrency thing, but the code appears to be sequential...
 
-						// only delete newF if it is a temp file that was made in convertFile
-						// TODO: would be great to have this be apart of the FbxConvTool somehow since this is a model operation
-						// not a ui operation.
-						if (displayFunction == DisplayFileFunction.PreviewOnly && newF != srcF && newF != null && !newF.isDirectory()) {
-							newF.delete();
-						}
+
+
+
+
+
 
 					}
-					SwingUtilities.invokeLater(new Runnable() {
-						@Override
-						public void run() {
-							fileConverterSidebar.fileChooser.refreshFileChooserList();
-						}
-					});
+
 				}
 			});
 			return null;

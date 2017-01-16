@@ -45,7 +45,7 @@ public class ViewportSidebar {
 			true) {
 			@Override
 			protected void onChange() {
-				desktopLauncher.modelPreviewApp.environmentLightingEnabled = isSelected();
+				desktopLauncher.modelPreviewApp.world.environmentLightingEnabled = isSelected();
 			}
 		};
 
@@ -58,7 +58,7 @@ public class ViewportSidebar {
 				Gdx.app.postRunnable(new Runnable() {
 					@Override
 					public void run() {
-						desktopLauncher.modelPreviewApp.setBackFaceCulling(isSelected());
+						desktopLauncher.modelPreviewApp.world.modelView.setBackFaceCulling(isSelected());
 					}
 				});
 			}
@@ -75,7 +75,7 @@ public class ViewportSidebar {
 				Gdx.app.postRunnable(new Runnable() {
 					@Override
 					public void run() {
-						desktopLauncher.modelPreviewApp.setAlphaBlending(isSelected());
+						desktopLauncher.modelPreviewApp.world.modelView.setAlphaBlending(isSelected());
 					}
 				});
 			}
@@ -94,9 +94,9 @@ public class ViewportSidebar {
 					@Override
 					public void run() {
 						if (getBooleanValue())
-							desktopLauncher.modelPreviewApp.setAlphaTest(getIntegerValue() / 100f);
+							desktopLauncher.modelPreviewApp.world.modelView.setAlphaTest(getIntegerValue() / 100f);
 						else
-							desktopLauncher.modelPreviewApp.setAlphaTest(-1f);
+							desktopLauncher.modelPreviewApp.world.modelView.setAlphaTest(-1f);
 					}
 				});
 			}
@@ -132,7 +132,7 @@ public class ViewportSidebar {
 		animComboBox.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				desktopLauncher.modelPreviewApp.setAnimation((Animation) animComboBox.getSelectedItem());
+				desktopLauncher.modelPreviewApp.world.modelView.setAnimation((Animation) animComboBox.getSelectedItem());
 			}
 		});
 
@@ -147,7 +147,7 @@ public class ViewportSidebar {
 				Gdx.app.postRunnable(new Runnable() {
 					@Override
 					public void run() {
-						desktopLauncher.modelPreviewApp.resetCam();
+						desktopLauncher.modelPreviewApp.world.resetCam();
 					}
 				});
 			}

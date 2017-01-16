@@ -72,7 +72,7 @@ public class FbxConvTool {
 	File[] convertFiles(File[] files){
 		final File[] outputFiles = new File[files.length];
 
-		currentPreviewNum = 0;
+		//currentPreviewNum = 0;
 		for (int i = 0; i < files.length; i++) {
 			final File newF = convertFile(files[i]);
 			outputFiles[i] = newF;
@@ -116,6 +116,8 @@ public class FbxConvTool {
 		String dstPath;
 
 		if (previewOnly) {
+			// TODO: isntead of making these temp files in the directory with the model
+			// make them in an OS dependent temp folder.
 			dstPath = targetDir + dirSeperator + getPreviewName(currentPreviewNum, dstType);
 			currentPreviewNum++;
 		} else {
