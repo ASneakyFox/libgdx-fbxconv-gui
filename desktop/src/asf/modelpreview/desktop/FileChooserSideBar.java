@@ -174,8 +174,7 @@ public class FileChooserSideBar {
 		}else if(selectedFiles.length == 1){
 			File sf = fileChooser.getSelectedFile();
 			if (isFileCanBeConverted(sf)) {
-				String ext = desktopLauncher.fileConverterSideBar.outputFileTypeBox.getValue().toLowerCase();
-				String val = FbxConvTool.stripExtension(sf.getName()) + "." + ext;
+				String val = FbxConvTool.getNewName(sf.getName(), desktopLauncher.fileConverterSideBar.outputFileTypeBox.getValue());
 				convertButton.setText("Convert "+sf.getName()+" to: " + val);
 				convertButton.setEnabled(true);
 			} else {

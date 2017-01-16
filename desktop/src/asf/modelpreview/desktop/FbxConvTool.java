@@ -8,27 +8,43 @@ import java.util.List;
  * Created by daniel on 1/15/17.
  */
 public class FbxConvTool {
-
+	private final String dirSeperator;
 	private int currentPreviewNum = 0;
+	String fbxConvLocation;
+	String fbxConvName;
+	String outputfileType; // G3DJ or G3DB
+	int maxVertxPanel;
+	int maxBonesPanel;
+	int maxBonesWeightsPanel;
+	boolean flipTextureCoords;
+	boolean packVertexColors;
+
 	DisplayFileFunction displayFunction;
 	boolean logDetailedOutput = true;
 
-	final LogSidebar log; // TODO: use a logger interface instead of direct reference to this gui element
-	final DesktopLauncher desktopLauncher; // TODO: shouldnt need reference to DesktopLauncher
+	final Log log; // TODO: use a logger interface instead of direct reference to this gui element
 
-	FbxConvTool(LogSidebar log, DesktopLauncher desktopLauncher) {
+	FbxConvTool(Log log) {
 		this.log = log;
-		this.desktopLauncher = desktopLauncher;
+		String osName = System.getProperty("os.name").toLowerCase();
+		if (osName.contains("win")) {
+			dirSeperator = "\\";
+		} else if (osName.contains("mac")) {
+			dirSeperator = "/";
+		} else {
+			dirSeperator = "/";
+		}
 	}
 
 
 
+	@Deprecated
 	void convertFileRecursive(File[] files, String srcExtension) {
 		for (File file : files) {
 			convertFileRecursive(file, srcExtension);
 		}
 	}
-
+	@Deprecated
 	private void convertFileRecursive(File f, String srcExtension) {
 
 		if (f.isDirectory()) {
@@ -48,6 +64,9 @@ public class FbxConvTool {
 		}
 	}
 
+	// TODO: incorporate the recusrive logic from above
+	// the outputFiles should bea flat array of all elligble files
+	// need to think about what i want to do if there is both the fbx and g3db versions in this list..
 	File[] convertFiles(File[] files){
 		final File[] outputFiles = new File[files.length];
 
@@ -83,21 +102,22 @@ public class FbxConvTool {
 			return f; // Already in desirable format, return the same file
 		}
 
-		if (!desktopLauncher.fbxConvLocationBox.hasValidValue()) {
+		// TODO validate all the other parameters
+		if (fbxConvLocation == null) {
 			if (logDetailedOutput)
 				log.error("Can not convert file, fbx-conv location is not yet configured.");
 			return null;
 		}
 
 		File targetDir = f.getParentFile();
-		String dstExtension = previewOnly || desktopLauncher.fileConverterSideBar.outputFileTypeBox.getValue().equals("G3DJ") ? ".g3dj" : ".g3db";
+		String dstType = previewOnly ? "G3DJ" : outputfileType;
 		String dstPath;
 
 		if (previewOnly) {
-			dstPath = targetDir + desktopLauncher.fbxConvLocationBox.dirSeperator + "libgdx-model-viewer." + currentPreviewNum + ".temp" + dstExtension;
+			dstPath = targetDir + dirSeperator + getPreviewName(currentPreviewNum, dstType);
 			currentPreviewNum++;
 		} else {
-			dstPath = targetDir + desktopLauncher.fbxConvLocationBox.dirSeperator + stripExtension(f.getName()) + dstExtension;
+			dstPath = targetDir + dirSeperator + getNewName(f.getName(), dstType);
 		}
 		File convertedFile = new File(dstPath);
 		try {
@@ -106,21 +126,21 @@ public class FbxConvTool {
 				//text("-----------------------------------");
 			}
 
-			ProcessBuilder p = new ProcessBuilder(desktopLauncher.fbxConvLocationBox.getValue(), "-v");
-			if (desktopLauncher.fileConverterSideBar.flipTextureCoords.isSelected())
+			ProcessBuilder p = new ProcessBuilder(fbxConvLocation, "-v");
+			if (flipTextureCoords)
 				p.command().add("-f");
-			if (desktopLauncher.fileConverterSideBar.packVertexColors.isSelected())
+			if (packVertexColors)
 				p.command().add("-p");
 			p.command().add("-m");
-			p.command().add(desktopLauncher.fileConverterSideBar.maxVertxPanel.getString());
+			p.command().add(String.valueOf(maxVertxPanel));
 			p.command().add("-b");
-			p.command().add(desktopLauncher.fileConverterSideBar.maxBonesPanel.getString());
+			p.command().add(String.valueOf(maxBonesPanel));
 			p.command().add("-w");
-			p.command().add(desktopLauncher.fileConverterSideBar.maxBonesWeightsPanel.getString());
+			p.command().add(String.valueOf(maxBonesWeightsPanel));
 			p.command().add(srcPath);
 			p.command().add(dstPath);
 			if (logDetailedOutput) {
-				log.text("\n" + shortenCommand(p.command(), desktopLauncher.fbxConvLocationBox.getValueName(), f.getName(), convertedFile.getName()) + "\n");
+				log.text("\n" + shortenCommand(p.command(), fbxConvName, f.getName(), convertedFile.getName()) + "\n");
 			}
 
 			String output = processOutput(p.start());
@@ -131,7 +151,7 @@ public class FbxConvTool {
 		} catch (IOException e) {
 			boolean possibleBadInstallation;
 			try {
-				Process proc = Runtime.getRuntime().exec(desktopLauncher.fbxConvLocationBox.getValue(), null, null);
+				Process proc = Runtime.getRuntime().exec(fbxConvLocation, null, null);
 				String output = processOutput(proc);
 				possibleBadInstallation = !output.contains("fbx-conv");
 			} catch (IOException ex) {
@@ -148,8 +168,17 @@ public class FbxConvTool {
 		return convertedFile;
 	}
 
-	// TODO: make private
-	protected static String stripExtension(String str) {
+	static String getPreviewName(int currentPreviewNum, String dstType){
+		String dstExtension = dstType.toLowerCase().equals("g3dj") ? ".g3dj" : ".g3db";
+		return "libgdx-model-viewer." + currentPreviewNum + ".temp" + dstExtension;
+	}
+
+	static String getNewName(String currentName, String dstType){
+		String dstExtension = dstType.toLowerCase().equals("g3dj") ? ".g3dj" : ".g3db";
+		return stripExtension(currentName) + dstExtension;
+	}
+
+	private static String stripExtension(String str) {
 		if (str == null) return null;
 		int pos = str.lastIndexOf(".");
 		if (pos == -1) return str;

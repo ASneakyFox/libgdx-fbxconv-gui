@@ -23,8 +23,6 @@ import java.util.concurrent.Callable;
  */
 public class FbxConvSidebar {
 
-
-
 	private final DesktopLauncher desktopLauncher;
 	private String fbxConvLocation;
 	private String fbxConvName;
@@ -114,7 +112,7 @@ public class FbxConvSidebar {
 					desktopLauncher.prefs.put(prefsKey, absPath);
 					fbxConvLocation = absPath;
 					fbxConvName = f.getName();
-					desktopLauncher.refreshFileBrowserPane();
+					desktopLauncher.fileConverterSideBar.refreshUi();
 				}
 			}
 		});

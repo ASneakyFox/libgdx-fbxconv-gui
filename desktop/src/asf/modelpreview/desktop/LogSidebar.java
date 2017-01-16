@@ -11,7 +11,7 @@ import java.io.StringWriter;
 /**
  * Created by daniel on 1/15/17.
  */
-class LogSidebar {
+class LogSidebar implements Log {
 
 	private final DesktopLauncher desktopLauncher;
 
@@ -33,11 +33,13 @@ class LogSidebar {
 		return outputTextScrollPane;
 	}
 
-	void debug(Object obj){
+	@Override
+	public void debug(Object obj){
 		System.out.println(String.valueOf(obj));
 	}
 
-	void debugError(Throwable t, Object obj){
+	@Override
+	public void debugError(Throwable t, Object obj){
 		System.out.println(String.valueOf(obj));
 		t.printStackTrace();
 	}
@@ -50,7 +52,8 @@ class LogSidebar {
 		}
 	}
 
-	void clear() {
+	@Override
+	public void clear() {
 		SwingUtilities.invokeLater(new Runnable() {
 			@Override
 			public void run() {
@@ -63,7 +66,8 @@ class LogSidebar {
 		});
 	}
 
-	void clear(final String text) {
+	@Override
+	public void clear(final String text) {
 		SwingUtilities.invokeLater(new Runnable() {
 			@Override
 			public void run() {
@@ -76,7 +80,8 @@ class LogSidebar {
 		});
 	}
 
-	void text(final String text) {
+	@Override
+	public void text(final String text) {
 		SwingUtilities.invokeLater(new Runnable() {
 			@Override
 			public void run() {
@@ -89,7 +94,8 @@ class LogSidebar {
 		});
 	}
 
-	void error(Throwable e) {
+	@Override
+	public void error(Throwable e) {
 
 		StringWriter sw = new StringWriter();
 		PrintWriter pw = new PrintWriter(sw);
@@ -97,7 +103,8 @@ class LogSidebar {
 		error(sw.toString());
 	}
 
-	void error(Throwable e, String hintMessage) {
+	@Override
+	public void error(Throwable e, String hintMessage) {
 
 		StringWriter sw = new StringWriter();
 		PrintWriter pw = new PrintWriter(sw);
@@ -105,7 +112,8 @@ class LogSidebar {
 		error(sw.toString() + "\n" + hintMessage);
 	}
 
-	void error(final String text) {
+	@Override
+	public void error(final String text) {
 		SwingUtilities.invokeLater(new Runnable() {
 			@Override
 			public void run() {

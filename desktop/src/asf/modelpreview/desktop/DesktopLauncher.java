@@ -30,29 +30,18 @@ import java.util.prefs.Preferences;
 
 public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 
-	public static void main(String[] arg) {
-
-		SwingUtilities.invokeLater(new Runnable() {
-			@Override
-			public void run() {
-				new DesktopLauncher();
-			}
-		});
-	}
-
 	final Preferences prefs;
 	final ExecutorService threadPool;
 	final FbxConvTool fbxConvTool;
+
 	final JFrame frame;
-
-	private JTabbedPane mainTabbedPane;
+	final ModelPreviewApp modelPreviewApp;
+	private final JTabbedPane mainTabbedPane;
 	final FbxConvSidebar fbxConvLocationBox;
-
 	final FileConverterSideBar fileConverterSideBar;
 	final ViewportSideBar viewportSideBar;
 	final LogSidebar log;
 	final AboutSidebar aboutSidebar;
-	final ModelPreviewApp modelPreviewApp;
 
 
 	static final String
@@ -82,7 +71,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 
 	private DesktopLauncher() {
 		log = new LogSidebar(this);
-		fbxConvTool = new FbxConvTool(log, this);
+		fbxConvTool = new FbxConvTool(log);
 		fbxConvLocationBox = new FbxConvSidebar(this);
 		fileConverterSideBar = new FileConverterSideBar(this);
 		viewportSideBar = new ViewportSideBar(this);
@@ -155,12 +144,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 
 	}
 
-	// TODO: remove, suer should access method on sidebar directly
-	void refreshFileBrowserPane() {
-		fileConverterSideBar.refreshUi();
-	}
-
-	// TODO: remove, user should access method on viewport directly
+	// keep this here because this is used by the model preview app, which only has a handle to the interface
 	public void setAnimList(Array<Animation> animations) {
 		viewportSideBar.setAnimList(animations);
 	}
@@ -189,6 +173,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 	 * @param files
 	 * @deprecated batch conversions are done by clicking the convert button in the file chooser now.
 	 */
+	@Deprecated
 	private void convertFilesAsBatch(final List<File> files) {
 		if (files.size() == 1 && !files.get(0).isDirectory()) {
 			// a single non directory file was chosen, lets just select it
@@ -223,6 +208,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 
 	}
 
+	@Deprecated
 	private class ConvertMultipleFilesCallable implements Callable<Void> {
 		final List<File> files;
 		final String srcExtension;
@@ -237,6 +223,14 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 			log.clear("Batch Convert: " + srcExtension);
 			fbxConvTool.logDetailedOutput = false;
 			fbxConvTool.displayFunction = DisplayFileFunction.KeepOutput;
+			fbxConvTool.fbxConvLocation = fbxConvLocationBox.getValue();
+			fbxConvTool.fbxConvName = fbxConvLocationBox.getValueName();
+			fbxConvTool.outputfileType = fileConverterSideBar.outputFileTypeBox.getValue();
+			fbxConvTool.maxVertxPanel = fileConverterSideBar.maxVertxPanel.getValue();
+			fbxConvTool.maxBonesPanel = fileConverterSideBar.maxBonesPanel.getValue();
+			fbxConvTool.maxBonesWeightsPanel = fileConverterSideBar.maxBonesWeightsPanel.getValue();
+			fbxConvTool.flipTextureCoords = fileConverterSideBar.flipTextureCoords.getValue();
+			fbxConvTool.packVertexColors = fileConverterSideBar.packVertexColors.getValue();
 			fbxConvTool.convertFileRecursive(files.toArray(new File[files.size()]), srcExtension);
 			return null;
 		}
@@ -268,6 +262,14 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 
 			fbxConvTool.logDetailedOutput = true;
 			fbxConvTool.displayFunction = displayFunction;
+			fbxConvTool.fbxConvLocation = fbxConvLocationBox.getValue();
+			fbxConvTool.fbxConvName = fbxConvLocationBox.getValueName();
+			fbxConvTool.outputfileType = fileConverterSideBar.outputFileTypeBox.getValue();
+			fbxConvTool.maxVertxPanel = fileConverterSideBar.maxVertxPanel.getValue();
+			fbxConvTool.maxBonesPanel = fileConverterSideBar.maxBonesPanel.getValue();
+			fbxConvTool.maxBonesWeightsPanel = fileConverterSideBar.maxBonesWeightsPanel.getValue();
+			fbxConvTool.flipTextureCoords = fileConverterSideBar.flipTextureCoords.getValue();
+			fbxConvTool.packVertexColors = fileConverterSideBar.packVertexColors.getValue();
 			final File[] outputFiles = fbxConvTool.convertFiles(files);
 
 			Gdx.app.postRunnable(new Runnable() {
@@ -366,5 +368,15 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 				return false;
 			}
 		}
+	}
+
+	public static void main(String[] arg) {
+
+		SwingUtilities.invokeLater(new Runnable() {
+			@Override
+			public void run() {
+				new DesktopLauncher();
+			}
+		});
 	}
 }
