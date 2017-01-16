@@ -1,5 +1,6 @@
 package asf.modelpreview.desktop;
 
+import asf.modelpreview.Log;
 import asf.modelpreview.ModelPreviewApp;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.backends.lwjgl.LwjglAWTCanvas;
@@ -143,10 +144,13 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 
 	}
 
-	// keep this here because this is used by the model preview app, which only has a handle to the interface
+	@Override
 	public void setAnimList(Array<Animation> animations) {
 		viewportSidebar.setAnimList(animations);
 	}
+
+	@Override
+	public Log getLog(){return log;}
 
 	/**
 	 * request a certain tab to be focused, should be granted as long as there

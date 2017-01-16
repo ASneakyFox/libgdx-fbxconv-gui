@@ -1,5 +1,7 @@
 package asf.modelpreview.desktop;
 
+import asf.modelpreview.Log;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.List;

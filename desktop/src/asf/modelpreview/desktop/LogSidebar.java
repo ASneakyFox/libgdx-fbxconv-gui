@@ -1,5 +1,6 @@
 package asf.modelpreview.desktop;
 
+import asf.modelpreview.Log;
 import com.badlogic.gdx.utils.Array;
 
 import javax.swing.JScrollPane;

@@ -1,4 +1,4 @@
-package asf.modelpreview.desktop;
+package asf.modelpreview;
 
 /**
  * Created by daniel on 1/15/17.
