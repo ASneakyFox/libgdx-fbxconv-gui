@@ -174,7 +174,7 @@ public class FileChooserSideBar {
 		}else if(selectedFiles.length == 1){
 			File sf = fileChooser.getSelectedFile();
 			if (isFileCanBeConverted(sf)) {
-				String val = FbxConvTool.getNewName(sf.getName(), desktopLauncher.fileConverterSideBar.outputFileTypeBox.getValue());
+				String val = FbxConvTool.getNewName(sf.getName(), desktopLauncher.fileConverterSidebar.outputFileTypeBox.getValue());
 				convertButton.setText("Convert "+sf.getName()+" to: " + val);
 				convertButton.setEnabled(true);
 			} else {
@@ -182,7 +182,7 @@ public class FileChooserSideBar {
 				convertButton.setEnabled(false);
 			}
 		}else{
-			String ext = desktopLauncher.fileConverterSideBar.outputFileTypeBox.getValue().toLowerCase();
+			String ext = desktopLauncher.fileConverterSidebar.outputFileTypeBox.getValue().toLowerCase();
 			convertButton.setText("Batch Convert "+selectedFiles.length+" files to ."+ext);
 			convertButton.setEnabled(true);
 		}

@@ -10,7 +10,7 @@ import java.awt.Component;
 /**
  * Created by daniel on 1/15/17.
  */
-public class FileConverterSideBar {
+public class FileConverterSidebar {
 	private final DesktopLauncher desktopLauncher;
 
 	FileChooserSideBar fileChooser; // TODO: make private, its public methods should move to this class
@@ -21,7 +21,7 @@ public class FileConverterSideBar {
 	NumberConfigPanel maxVertxPanel, maxBonesPanel, maxBonesWeightsPanel;
 	ComboStringConfigPanel inputFileTypeBox, outputFileTypeBox;
 
-	public FileConverterSideBar(DesktopLauncher desktopLauncher) {
+	public FileConverterSidebar(DesktopLauncher desktopLauncher) {
 		this.desktopLauncher = desktopLauncher;
 	}
 

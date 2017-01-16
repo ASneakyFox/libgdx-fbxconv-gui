@@ -112,7 +112,7 @@ public class FbxConvSidebar {
 					desktopLauncher.prefs.put(prefsKey, absPath);
 					fbxConvLocation = absPath;
 					fbxConvName = f.getName();
-					desktopLauncher.fileConverterSideBar.refreshUi();
+					desktopLauncher.fileConverterSidebar.refreshUi();
 				}
 			}
 		});

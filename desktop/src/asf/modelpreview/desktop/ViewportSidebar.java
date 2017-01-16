@@ -19,7 +19,7 @@ import java.awt.event.ActionListener;
 /**
  * Created by daniel on 1/15/17.
  */
-public class ViewportSideBar {
+public class ViewportSidebar {
 
 	private final DesktopLauncher desktopLauncher;
 
@@ -27,7 +27,7 @@ public class ViewportSideBar {
 	private BooleanIntegerConfigPanel alphaTestBox;
 	private JComboBox<Animation> animComboBox;
 
-	public ViewportSideBar(DesktopLauncher desktopLauncher) {
+	public ViewportSidebar(DesktopLauncher desktopLauncher) {
 		this.desktopLauncher = desktopLauncher;
 	}
 

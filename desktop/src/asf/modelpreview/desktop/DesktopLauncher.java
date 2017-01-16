@@ -38,11 +38,10 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 	final ModelPreviewApp modelPreviewApp;
 	private final JTabbedPane mainTabbedPane;
 	final FbxConvSidebar fbxConvLocationBox;
-	final FileConverterSideBar fileConverterSideBar;
-	final ViewportSideBar viewportSideBar;
+	final FileConverterSidebar fileConverterSidebar;
+	final ViewportSidebar viewportSidebar;
 	final LogSidebar log;
 	final AboutSidebar aboutSidebar;
-
 
 	static final String
 		S_folderLocation = "S_folderLocation",
@@ -73,8 +72,8 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 		log = new LogSidebar(this);
 		fbxConvTool = new FbxConvTool(log);
 		fbxConvLocationBox = new FbxConvSidebar(this);
-		fileConverterSideBar = new FileConverterSideBar(this);
-		viewportSideBar = new ViewportSideBar(this);
+		fileConverterSidebar = new FileConverterSidebar(this);
+		viewportSidebar = new ViewportSidebar(this);
 		aboutSidebar = new AboutSidebar(this);
 		prefs = Preferences.userRoot().node(KEY_PREFERENCES);
 
@@ -123,13 +122,13 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 
 		// Left Side Tool Bar
 		mainTabbedPane.addTab("Config", null, fbxConvLocationBox.buildUi(), "Configure fbx-conv");
-		mainTabbedPane.addTab("File Browser", null, fileConverterSideBar.buildUi(), "Browse and convert files");
-		mainTabbedPane.addTab("Viewport Settings", null, viewportSideBar.buildUi(), "Viewport Settings");
+		mainTabbedPane.addTab("File Browser", null, fileConverterSidebar.buildUi(), "Browse and convert files");
+		mainTabbedPane.addTab("Viewport Settings", null, viewportSidebar.buildUi(), "Viewport Settings");
 		mainTabbedPane.addTab("Output Console", null, log.buildUi(), "Output");
 		mainTabbedPane.addTab("About", null, aboutSidebar.buildUI(), "About");
 
 		if(fbxConvLocationBox.hasValidValue())
-			fileConverterSideBar.focus();
+			fileConverterSidebar.focus();
 
 		frame.pack();
 
@@ -146,7 +145,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 
 	// keep this here because this is used by the model preview app, which only has a handle to the interface
 	public void setAnimList(Array<Animation> animations) {
-		viewportSideBar.setAnimList(animations);
+		viewportSidebar.setAnimList(animations);
 	}
 
 	/**
@@ -179,12 +178,12 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 			// a single non directory file was chosen, lets just select it
 			File[] fs = new File[1];
 			fs[0] = files.get(0);
-			fileConverterSideBar.fileChooser.setSelectedFile(fs);
+			fileConverterSidebar.fileChooser.setSelectedFile(fs);
 			return;
 		}
 
 		String[] options = new String[]{".fbx", ".obj", ".dae"};
-		String dstExtension = fileConverterSideBar.outputFileTypeBox.getValue().equals("G3DJ") ? ".g3dj" : ".g3db";
+		String dstExtension = fileConverterSidebar.outputFileTypeBox.getValue().equals("G3DJ") ? ".g3dj" : ".g3db";
 		String msgAddition = files.size() == 1 && files.get(0).isDirectory() ? " in " + files.get(0).getName() : "";
 		final String srcExtension = (String) JOptionPane.showInputDialog(
 			frame,
@@ -225,12 +224,12 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 			fbxConvTool.displayFunction = DisplayFileFunction.KeepOutput;
 			fbxConvTool.fbxConvLocation = fbxConvLocationBox.getValue();
 			fbxConvTool.fbxConvName = fbxConvLocationBox.getValueName();
-			fbxConvTool.outputfileType = fileConverterSideBar.outputFileTypeBox.getValue();
-			fbxConvTool.maxVertxPanel = fileConverterSideBar.maxVertxPanel.getValue();
-			fbxConvTool.maxBonesPanel = fileConverterSideBar.maxBonesPanel.getValue();
-			fbxConvTool.maxBonesWeightsPanel = fileConverterSideBar.maxBonesWeightsPanel.getValue();
-			fbxConvTool.flipTextureCoords = fileConverterSideBar.flipTextureCoords.getValue();
-			fbxConvTool.packVertexColors = fileConverterSideBar.packVertexColors.getValue();
+			fbxConvTool.outputfileType = fileConverterSidebar.outputFileTypeBox.getValue();
+			fbxConvTool.maxVertxPanel = fileConverterSidebar.maxVertxPanel.getValue();
+			fbxConvTool.maxBonesPanel = fileConverterSidebar.maxBonesPanel.getValue();
+			fbxConvTool.maxBonesWeightsPanel = fileConverterSidebar.maxBonesWeightsPanel.getValue();
+			fbxConvTool.flipTextureCoords = fileConverterSidebar.flipTextureCoords.getValue();
+			fbxConvTool.packVertexColors = fileConverterSidebar.packVertexColors.getValue();
 			fbxConvTool.convertFileRecursive(files.toArray(new File[files.size()]), srcExtension);
 			return null;
 		}
@@ -264,12 +263,12 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 			fbxConvTool.displayFunction = displayFunction;
 			fbxConvTool.fbxConvLocation = fbxConvLocationBox.getValue();
 			fbxConvTool.fbxConvName = fbxConvLocationBox.getValueName();
-			fbxConvTool.outputfileType = fileConverterSideBar.outputFileTypeBox.getValue();
-			fbxConvTool.maxVertxPanel = fileConverterSideBar.maxVertxPanel.getValue();
-			fbxConvTool.maxBonesPanel = fileConverterSideBar.maxBonesPanel.getValue();
-			fbxConvTool.maxBonesWeightsPanel = fileConverterSideBar.maxBonesWeightsPanel.getValue();
-			fbxConvTool.flipTextureCoords = fileConverterSideBar.flipTextureCoords.getValue();
-			fbxConvTool.packVertexColors = fileConverterSideBar.packVertexColors.getValue();
+			fbxConvTool.outputfileType = fileConverterSidebar.outputFileTypeBox.getValue();
+			fbxConvTool.maxVertxPanel = fileConverterSidebar.maxVertxPanel.getValue();
+			fbxConvTool.maxBonesPanel = fileConverterSidebar.maxBonesPanel.getValue();
+			fbxConvTool.maxBonesWeightsPanel = fileConverterSidebar.maxBonesWeightsPanel.getValue();
+			fbxConvTool.flipTextureCoords = fileConverterSidebar.flipTextureCoords.getValue();
+			fbxConvTool.packVertexColors = fileConverterSidebar.packVertexColors.getValue();
 			final File[] outputFiles = fbxConvTool.convertFiles(files);
 
 			Gdx.app.postRunnable(new Runnable() {
@@ -283,7 +282,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 							modelPreviewApp.previewFile(null);
 						} else {
 							try {
-								modelPreviewApp.previewFile(newF);
+								modelPreviewApp.previewFile(newF); // TODO: this is resetting the view instead of adding each model to it
 							} catch (GdxRuntimeException ex) {
 								log.error("Error while previewing file: " + srcF.getName());
 								log.error(ex);
@@ -296,6 +295,8 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 						// seems to be a concurrency thing, but the code appears to be sequential...
 
 						// only delete newF if it is a temp file that was made in convertFile
+						// TODO: would be great to have this be apart of the FbxConvTool somehow since this is a model operation
+						// not a ui operation.
 						if (displayFunction == DisplayFileFunction.PreviewOnly && newF != srcF && newF != null && !newF.isDirectory()) {
 							newF.delete();
 						}
@@ -304,7 +305,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 					SwingUtilities.invokeLater(new Runnable() {
 						@Override
 						public void run() {
-							fileConverterSideBar.fileChooser.refreshFileChooserList();
+							fileConverterSidebar.fileChooser.refreshFileChooserList();
 						}
 					});
 				}
@@ -313,25 +314,14 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 		}
 	}
 
-	private static String stringArrayToString(String[] stringArray) {
-		if (stringArray == null || stringArray.length == 0)
+	static String arrayToString(Object[] objArray){
+		if (objArray == null || objArray.length == 0)
 			return "";
 		String output = "";
-		for (String s : stringArray) {
-			if (s == null || s.isEmpty()) {
-				continue;
-			}
-			output += s + " ";
+		for (Object o : objArray) {
+			output += String.valueOf(o) + " ";
 		}
 		return output.substring(0, output.length() - 1);
-	}
-
-	static String arrayToString(Object[] obj){
-		String out = "";
-		for (Object o : obj) {
-			out += o +", ";
-		}
-		return out;
 	}
 
 	private class DnDTransferHandler extends TransferHandler {
@@ -356,7 +346,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 					for (int i = 0; i < data.size(); i++) {
 						filesToSelect[i] = data.get(i);
 					}
-					fileConverterSideBar.fileChooser.setSelectedFile(filesToSelect);
+					fileConverterSidebar.fileChooser.setSelectedFile(filesToSelect);
 					//convertFilesAsBatch(data);
 					return true;
 				}else{
