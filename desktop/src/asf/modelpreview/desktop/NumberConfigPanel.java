@@ -1,6 +1,5 @@
 package asf.modelpreview.desktop;
 
-import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -8,10 +7,8 @@ import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
-import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.peer.DesktopPeer;
 
 /**
  * Created by Danny on 10/30/2014.
@@ -34,7 +31,7 @@ public class NumberConfigPanel {
                 int currentValue = desktopLauncher.prefs.getInt(prefsKey,defaultValue);
                 spinner.setValue(currentValue);
                 spinner.setModel(spinnerModel);
-		onChange();
+	            	onChange();
                 spinner.addChangeListener(new ChangeListener() {
                         @Override
                         public void stateChanged(ChangeEvent e) {

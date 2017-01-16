@@ -9,37 +9,19 @@ import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.GdxRuntimeException;
 
 import javax.swing.BoxLayout;
-import javax.swing.JButton;
-import javax.swing.JComboBox;
 import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JList;
 import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JSeparator;
 import javax.swing.JTabbedPane;
-import javax.swing.JTextArea;
-import javax.swing.JTextPane;
 import javax.swing.SwingUtilities;
 import javax.swing.TransferHandler;
 import javax.swing.UIManager;
 import javax.swing.WindowConstants;
-import javax.swing.plaf.basic.BasicComboBoxRenderer;
-import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Container;
-import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.Toolkit;
 import java.awt.datatransfer.DataFlavor;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.io.File;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.net.URI;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -60,49 +42,51 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 
 	final Preferences prefs;
 	final ExecutorService threadPool;
+	final FbxConvTool fbxConvTool;
 	final JFrame frame;
 
-	private FileChooserSideBar fileChooser;
 	private JTabbedPane mainTabbedPane;
-	JScrollPane fileBrowserScrollPane;
-	JPanel fileBrowserConfiguredPane, fileBrowserNotConfiguredPane;
-	private FileChooserFbxConv fbxConvLocationBox;
-	private BooleanConfigPanel flipTextureCoords, packVertexColors;
-	private NumberConfigPanel maxVertxPanel, maxBonesPanel, maxBonesWeightsPanel;
-	ComboStringConfigPanel inputFileTypeBox, outputFileTypeBox;
-	private BooleanConfigPanel environmentLightingBox, backFaceCullingBox, alphaBlendingBox;
-	private BooleanIntegerConfigPanel alphaTestBox;
-	private JComboBox<Animation> animComboBox;
-	private JScrollPane outputTextScrollPane;
-	private JTextPane outputTextPane;
-	private ModelPreviewApp modelPreviewApp;
+	final FbxConvSidebar fbxConvLocationBox;
+
+	final FileConverterSideBar fileConverterSideBar;
+	final ViewportSideBar viewportSideBar;
+	final LogSidebar log;
+	final AboutSidebar aboutSidebar;
+	final ModelPreviewApp modelPreviewApp;
 
 
-	static final String S_folderLocation = "S_folderLocation";
-	static final String I_fileFilter = "I_fileFilter";
-	//static final String B_alwaysConvert = "B_alwaysConvert";
-	static final String B_automaticPreview = "B_automaticPreview";
-	private static final String S_fbxConvLocation = "S_fbxConvLocation";
-	private static final String B_flipVTextureCoords = "B_flipVTextureCoords";
-	private static final String B_packVertexColorsToOneFloat = "B_packVertexColorsToOneFloat";
-	private static final String I_maxVertPerMesh = "I_maxVertPerMesh";
-	private static final String I_maxBonePerNodepart = "I_maxBonePerNodepart";
-	private static final String I_maxBoneWeightPerVertex = "I_maxBoneWeightPerVertex";
-	private static final String S_inputFileType = "S_inputFileType";
-	private static final String S_outputFileType = "S_outputFileType";
-	private static final String S_batchConvertFileType = "S_batchConvertFileType";
-	private static final String B_environmentLighting = "B_environmentLighting";
-	private static final String B_backFaceCulling = "B_backFaceCulling";
-	private static final String B_alphaBlending = "B_alphaBlending";
-	private static final String B_alphaTest = "B_alphaTest";
-	private static final String I_alphaTest = "I_alphaTest";
+	static final String
+		S_folderLocation = "S_folderLocation",
+		I_fileFilter = "I_fileFilter",
+		B_alwaysConvert = "B_alwaysConvert",
+		B_automaticPreview = "B_automaticPreview",
+		S_fbxConvLocation = "S_fbxConvLocation",
+		B_flipVTextureCoords = "B_flipVTextureCoords",
+		B_packVertexColorsToOneFloat = "B_packVertexColorsToOneFloat",
+		I_maxVertPerMesh = "I_maxVertPerMesh",
+		I_maxBonePerNodepart = "I_maxBonePerNodepart",
+		I_maxBoneWeightPerVertex = "I_maxBoneWeightPerVertex",
+		S_inputFileType = "S_inputFileType",
+		S_outputFileType = "S_outputFileType",
+		S_batchConvertFileType = "S_batchConvertFileType",
+		B_environmentLighting = "B_environmentLighting",
+		B_backFaceCulling = "B_backFaceCulling",
+		B_alphaBlending = "B_alphaBlending",
+		B_alphaTest = "B_alphaTest",
+		I_alphaTest = "I_alphaTest";
 
-	private static final String
-		KEY_PREFERENCES = "LibGDXModelPreviewUtility2",
+	static final String
+		KEY_PREFERENCES = "LibGDXModelPreviewUtility",
 		LBL_WINDOW_TITLE = "LibGDX Model Preview Utility",
 		LBL_FBX_CONV_NOT_CONFIGURED = "Fbx-conv is not configured correctly.\n\nVerify the location is correct on the Config tab.";
 
 	private DesktopLauncher() {
+		log = new LogSidebar(this);
+		fbxConvTool = new FbxConvTool(log, this);
+		fbxConvLocationBox = new FbxConvSidebar(this);
+		fileConverterSideBar = new FileConverterSideBar(this);
+		viewportSideBar = new ViewportSideBar(this);
+		aboutSidebar = new AboutSidebar(this);
 		prefs = Preferences.userRoot().node(KEY_PREFERENCES);
 
 		threadPool = Executors.newCachedThreadPool();
@@ -121,7 +105,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 				}
 			}
 		} catch (Exception e) {
-			// If Nimbus is not available, you can set the GUI to another look and feel.
+			log.debugError(e, "unable to set LAF to Nimbus");
 		}
 
 		///JPopupMenu.setDefaultLightWeightPopupEnabled(true);
@@ -140,273 +124,23 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 		container.add(mainTabbedPane);
 
 		// libgdx canvas
-		{
-			modelPreviewApp = new ModelPreviewApp(this);
-			LwjglApplicationConfiguration canvasConfig = new LwjglApplicationConfiguration();
-			LwjglApplicationConfiguration.disableAudio = true;
-			canvasConfig.samples = 2;
-			canvasConfig.initialBackgroundColor = modelPreviewApp.backgroundColor;
-			LwjglAWTCanvas canvas = new LwjglAWTCanvas(modelPreviewApp, canvasConfig);
-			container.add(canvas.getCanvas());
-		}
+		modelPreviewApp = new ModelPreviewApp(this); // TODO: need to make sure I am properly access the GDX thread with a callable.
+		LwjglApplicationConfiguration canvasConfig = new LwjglApplicationConfiguration();
+		LwjglApplicationConfiguration.disableAudio = true;
+		canvasConfig.samples = 2;
+		canvasConfig.initialBackgroundColor = modelPreviewApp.backgroundColor;
+		LwjglAWTCanvas canvas = new LwjglAWTCanvas(modelPreviewApp, canvasConfig);
+		container.add(canvas.getCanvas());
 
 		// Left Side Tool Bar
-		{
-
-			// fbx-conv Configuration
-			{
-				fbxConvLocationBox = new FileChooserFbxConv(this, S_fbxConvLocation);
-				JScrollPane mainScrollPane = new JScrollPane(fbxConvLocationBox.basePane);
-				mainTabbedPane.addTab("Config", null, mainScrollPane, "Configure fbx-conv");
-			}
-
-			// File Browser
-			{
-				fileBrowserNotConfiguredPane = new JPanel();
-				BoxLayout bl0 = new BoxLayout(fileBrowserNotConfiguredPane, BoxLayout.PAGE_AXIS);
-				fileBrowserNotConfiguredPane.setLayout(bl0);
-				fileBrowserNotConfiguredPane.add(new JLabel(LBL_FBX_CONV_NOT_CONFIGURED));
-
-
-				fileBrowserConfiguredPane = new JPanel();
-				BoxLayout bl = new BoxLayout(fileBrowserConfiguredPane, BoxLayout.PAGE_AXIS);
-				fileBrowserConfiguredPane.setLayout(bl);
-
-
-				fileChooser = new FileChooserSideBar(this, fileBrowserConfiguredPane);
-
-				fileBrowserConfiguredPane.add(new JSeparator());
-
-				JPanel flipBase = new JPanel();
-				fileBrowserConfiguredPane.add(flipBase);
-				flipTextureCoords = new BooleanConfigPanel(this, flipBase, "Flip V Texture Coordinates", B_flipVTextureCoords, true) {
-					@Override
-					protected void onChange() {
-						if (fileChooser.isAutomaticPreview())
-							displaySelectedFiles(true);
-					}
-				};
-
-				maxVertxPanel = new NumberConfigPanel(this, I_maxVertPerMesh, fileBrowserConfiguredPane,
-					"Max Verticies per mesh (k)", 32, 1, 50, 1) {
-					@Override
-					protected void onChange() {
-						if (fileChooser.isAutomaticPreview())
-							displaySelectedFiles(true);
-					}
-				};
-				maxBonesPanel = new NumberConfigPanel(this, I_maxBonePerNodepart, fileBrowserConfiguredPane,
-					"Max Bones per nodepart", 12, 1, 50, 1) {
-					@Override
-					protected void onChange() {
-						if (fileChooser.isAutomaticPreview())
-							displaySelectedFiles(true);
-					}
-				};
-				maxBonesWeightsPanel = new NumberConfigPanel(this, I_maxBoneWeightPerVertex, fileBrowserConfiguredPane,
-					"Max Bone Weights per vertex", 4, 1, 50, 1) {
-					@Override
-					protected void onChange() {
-						if (fileChooser.isAutomaticPreview())
-							displaySelectedFiles(true);
-					}
-				};
-				JPanel packBase = new JPanel();
-				fileBrowserConfiguredPane.add(packBase);
-				packVertexColors = new BooleanConfigPanel(this, packBase, "Pack vertex colors to one float", B_packVertexColorsToOneFloat,
-					false) {
-					@Override
-					protected void onChange() {
-						if (fileChooser.isAutomaticPreview())
-							displaySelectedFiles(true);
-					}
-				};
-
-				outputFileTypeBox = new ComboStringConfigPanel(this, S_outputFileType, fileBrowserConfiguredPane,
-					"Output Format", "G3DB", new String[]{"G3DB", "G3DJ"}) {
-					@Override
-					protected void onChange() {
-						fileChooser.refreshConvertButtonText();
-					}
-				};
-
-
-				fileBrowserScrollPane = new JScrollPane(fbxConvLocationBox.hasValidValue() ? fileBrowserConfiguredPane : fileBrowserNotConfiguredPane);
-				mainTabbedPane.addTab("File Browser", null, fileBrowserScrollPane, "Browse and convert files");
-			}
-
-
-
-			// Viewport Settings
-			{
-
-				JPanel viewportSettingsPanel = new JPanel();
-				JScrollPane viewportSettingsPanelScrollPane = new JScrollPane(viewportSettingsPanel);
-				mainTabbedPane.addTab("Viewport Settings", null, viewportSettingsPanelScrollPane, "Viewport Settings");
-				BoxLayout bl = new BoxLayout(viewportSettingsPanel, BoxLayout.PAGE_AXIS);
-				viewportSettingsPanel.setLayout(bl);
-
-				JPanel baseEnvPanel = new JPanel();
-				viewportSettingsPanel.add(baseEnvPanel);
-				environmentLightingBox = new BooleanConfigPanel(this, baseEnvPanel, "Environment Lighting", B_environmentLighting,
-					true) {
-					@Override
-					protected void onChange() {
-						modelPreviewApp.environmentLightingEnabled = isSelected();
-					}
-				};
-
-				JPanel baseBackFacePanel = new JPanel();
-				viewportSettingsPanel.add(baseBackFacePanel);
-				backFaceCullingBox = new BooleanConfigPanel(this, baseBackFacePanel, "Back Face Culling", B_backFaceCulling,
-					true) {
-					@Override
-					protected void onChange() {
-						Gdx.app.postRunnable(new Runnable() {
-							@Override
-							public void run() {
-								modelPreviewApp.setBackFaceCulling(isSelected());
-							}
-						});
-					}
-				};
-				backFaceCullingBox.checkBox.setToolTipText("mat.set(new IntAttribute(IntAttribute.CullFace, 0));");
-
-
-				JPanel baseAlphaBlending = new JPanel();
-				viewportSettingsPanel.add(baseAlphaBlending);
-				alphaBlendingBox = new BooleanConfigPanel(this, baseAlphaBlending, "Alpha Blending", B_alphaBlending,
-					true) {
-					@Override
-					protected void onChange() {
-						Gdx.app.postRunnable(new Runnable() {
-							@Override
-							public void run() {
-								modelPreviewApp.setAlphaBlending(isSelected());
-							}
-						});
-					}
-				};
-				alphaBlendingBox.checkBox.setToolTipText("mat.set(new BlendingAttribute(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA));");
-
-
-				JPanel baseAlphaTest = new JPanel();
-				viewportSettingsPanel.add(baseAlphaTest);
-				alphaTestBox = new BooleanIntegerConfigPanel(this, baseAlphaTest, "Alpha Test",
-					B_alphaTest, false,
-					I_alphaTest, 50, 0, 100, 1) {
-					@Override
-					protected void onChange() {
-						Gdx.app.postRunnable(new Runnable() {
-							@Override
-							public void run() {
-								if (getBooleanValue())
-									modelPreviewApp.setAlphaTest(getIntegerValue() / 100f);
-								else
-									modelPreviewApp.setAlphaTest(-1f);
-							}
-						});
-					}
-				};
-				alphaTestBox.checkBox.setToolTipText("mat.set(new FloatAttribute(FloatAttribute.AlphaTest, 0.5f));");
-
-
-				JPanel baseAnimPanel = new JPanel();
-				viewportSettingsPanel.add(baseAnimPanel);
-				baseAnimPanel.add(new JLabel("Animation: "));
-				animComboBox = new JComboBox<Animation>();
-				baseAnimPanel.add(animComboBox);
-
-
-				BasicComboBoxRenderer animComboRenderer = new BasicComboBoxRenderer() {
-					@Override
-					public Component getListCellRendererComponent(JList list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
-						if (value == null) {
-							setText("<No Animation>");
-						} else {
-							Animation anim = (Animation) value;
-							setText(anim.id + "  -  " + anim.duration);
-						}
-						return this;
-					}
-				};
-
-				animComboBox.setRenderer(animComboRenderer);
-
-				animComboBox.addItem(null);
-
-
-				animComboBox.addActionListener(new ActionListener() {
-					@Override
-					public void actionPerformed(ActionEvent e) {
-						modelPreviewApp.setAnimation((Animation) animComboBox.getSelectedItem());
-					}
-				});
-
-
-				JPanel baseCamPanel = new JPanel();
-				viewportSettingsPanel.add(baseCamPanel);
-				JButton resetCamButton = new JButton("Reset Camera");
-				baseCamPanel.add(resetCamButton);
-				resetCamButton.addActionListener(new ActionListener() {
-					@Override
-					public void actionPerformed(ActionEvent e) {
-						Gdx.app.postRunnable(new Runnable() {
-							@Override
-							public void run() {
-								modelPreviewApp.resetCam();
-							}
-						});
-					}
-				});
-
-			}
-
-			// Output Console
-			{
-				outputTextPane = new JTextPane();
-				outputTextPane.setEditable(false);
-				outputTextScrollPane = new JScrollPane(outputTextPane);
-				mainTabbedPane.addTab("Output Console", null, outputTextScrollPane, "Output");
-			}
-
-
-			// About
-			{
-				JPanel aboutPanel = new JPanel(new BorderLayout());
-				JScrollPane aboutScrollPane = new JScrollPane(aboutPanel);
-
-				String text = "libgdx-fbxconv-gui is a lightweight program created by Daniel Strong to help make it easier to get your 3D models ready for LibGDX.";
-				text += "\n\nIf you need help or want more information about this software then visit the github page at: http://asneakyfox.github.io/libgdx-fbxconv-gui/";
-				JTextArea aboutTextPane = new JTextArea(text);
-				aboutTextPane.setLineWrap(true);
-				aboutTextPane.setWrapStyleWord(true);
-				aboutTextPane.setEditable(false);
-
-
-				aboutPanel.add(aboutTextPane, BorderLayout.CENTER);
-
-
-				JButton githubUrlButton = new JButton("View on Github");
-				githubUrlButton.addActionListener(new ActionListener() {
-					@Override
-					public void actionPerformed(ActionEvent e) {
-						try {
-							Desktop.getDesktop().browse(new URI("http://asneakyfox.github.io/libgdx-fbxconv-gui/"));
-						} catch (Throwable t) {
-							JOptionPane.showMessageDialog(frame, "I couldnt open your browser while trying to navigate to:\n\nhttp://asneakyfox.github.io/libgdx-fbxconv-gui/");
-						}
-					}
-				});
-				aboutPanel.add(githubUrlButton, BorderLayout.SOUTH);
-
-				mainTabbedPane.addTab("About", null, aboutScrollPane, "About");
-
-			}
-		}
+		mainTabbedPane.addTab("Config", null, fbxConvLocationBox.buildUi(), "Configure fbx-conv");
+		mainTabbedPane.addTab("File Browser", null, fileConverterSideBar.buildUi(), "Browse and convert files");
+		mainTabbedPane.addTab("Viewport Settings", null, viewportSideBar.buildUi(), "Viewport Settings");
+		mainTabbedPane.addTab("Output Console", null, log.buildUi(), "Output");
+		mainTabbedPane.addTab("About", null, aboutSidebar.buildUI(), "About");
 
 		if(fbxConvLocationBox.hasValidValue())
-			mainTabbedPane.setSelectedComponent(fileBrowserScrollPane);
+			fileConverterSideBar.focus();
 
 		frame.pack();
 
@@ -421,92 +155,37 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 
 	}
 
+	// TODO: remove, suer should access method on sidebar directly
 	void refreshFileBrowserPane() {
-		fileBrowserScrollPane.setViewportView(fbxConvLocationBox.hasValidValue() ? fileBrowserConfiguredPane : fileBrowserNotConfiguredPane);
+		fileConverterSideBar.refreshUi();
 	}
 
+	// TODO: remove, user should access method on viewport directly
 	public void setAnimList(Array<Animation> animations) {
-		animComboBox.removeAllItems();
-		animComboBox.addItem(null);
-		if (animations == null)
-			return;
-
-		for (Animation animName : animations) {
-			animComboBox.addItem(animName);
-		}
-	}
-
-
-	void logTextClear() {
-		SwingUtilities.invokeLater(new Runnable() {
-			@Override
-			public void run() {
-				if (outputTextPane == null) {
-					System.out.println();
-					return;
-				}
-				outputTextPane.setText("");
-			}
-		});
-	}
-
-	void logTextClear(final String text) {
-		SwingUtilities.invokeLater(new Runnable() {
-			@Override
-			public void run() {
-				if (outputTextPane == null) {
-					System.out.println(text);
-					return;
-				}
-				outputTextPane.setText(text);
-			}
-		});
-	}
-
-	void logText(final String text) {
-		SwingUtilities.invokeLater(new Runnable() {
-			@Override
-			public void run() {
-				if (outputTextPane == null) {
-					System.out.println(text);
-					return;
-				}
-				outputTextPane.setText(outputTextPane.getText() + "\n" + text);
-			}
-		});
-	}
-
-	void logTextError(Throwable e) {
-
-		StringWriter sw = new StringWriter();
-		PrintWriter pw = new PrintWriter(sw);
-		e.printStackTrace(pw);
-		logTextError(sw.toString());
-	}
-
-	void logTextError(Throwable e, String hintMessage) {
-
-		StringWriter sw = new StringWriter();
-		PrintWriter pw = new PrintWriter(sw);
-		e.printStackTrace(pw);
-		logTextError(sw.toString() + "\n" + hintMessage);
-	}
-
-	void logTextError(final String text) {
-		SwingUtilities.invokeLater(new Runnable() {
-			@Override
-			public void run() {
-				if (outputTextPane == null) {
-					System.err.println(text);
-					return;
-				}
-				outputTextPane.setText(outputTextPane.getText() + "\n" + text);
-				mainTabbedPane.setSelectedComponent(outputTextScrollPane);
-			}
-		});
+		viewportSideBar.setAnimList(animations);
 	}
 
 	/**
+	 * request a certain tab to be focused, should be granted as long as there
+	 * is not a modal dialog.
+	 * @param c
+	 */
+	void requestFocus(Component c){
+		mainTabbedPane.setSelectedComponent(c);
+	}
+
+	void showModal(String message){
+		JOptionPane.showMessageDialog(frame, message);
+
+	}
+
+	/**
+	 *
+	 *
+	 * JOption prompt to convert all files of a specific type
+	 *
+	 * TODO: need to merge the recusion logic from this batch converter into the previewFilesCallable
+	 *
 	 * @param files
 	 * @deprecated batch conversions are done by clicking the convert button in the file chooser now.
 	 */
@@ -515,12 +194,12 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 			// a single non directory file was chosen, lets just select it
 			File[] fs = new File[1];
 			fs[0] = files.get(0);
-			fileChooser.setSelectedFile(fs);
+			fileConverterSideBar.fileChooser.setSelectedFile(fs);
 			return;
 		}
 
 		String[] options = new String[]{".fbx", ".obj", ".dae"};
-		String dstExtension = outputFileTypeBox.getValue().equals("G3DJ") ? ".g3dj" : ".g3db";
+		String dstExtension = fileConverterSideBar.outputFileTypeBox.getValue().equals("G3DJ") ? ".g3dj" : ".g3db";
 		String msgAddition = files.size() == 1 && files.get(0).isDirectory() ? " in " + files.get(0).getName() : "";
 		final String srcExtension = (String) JOptionPane.showInputDialog(
 			frame,
@@ -538,81 +217,43 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 
 		prefs.put(S_batchConvertFileType, srcExtension);
 
-		mainTabbedPane.setSelectedComponent(outputTextScrollPane);
+		log.focus();
 
-
-		threadPool.submit(new ConvertMultipleFilesCallable(files, srcExtension, dstExtension));
+		threadPool.submit(new ConvertMultipleFilesCallable(files, srcExtension));
 
 	}
 
 	private class ConvertMultipleFilesCallable implements Callable<Void> {
 		final List<File> files;
 		final String srcExtension;
-		final String dstExtension;
 
-		public ConvertMultipleFilesCallable(List<File> files, String srcExtension, String dstExtension) {
+		public ConvertMultipleFilesCallable(List<File> files, String srcExtension) {
 			this.files = files;
 			this.srcExtension = srcExtension;
-			this.dstExtension = dstExtension;
 		}
 
 		@Override
 		public Void call() throws Exception {
-			logTextClear("Batch Convert: " + srcExtension + " -> " + dstExtension);
-			for (File file : files) {
-				convertFileRecursive(file, srcExtension);
-			}
+			log.clear("Batch Convert: " + srcExtension);
+			fbxConvTool.logDetailedOutput = false;
+			fbxConvTool.displayFunction = DisplayFileFunction.KeepOutput;
+			fbxConvTool.convertFileRecursive(files.toArray(new File[files.size()]), srcExtension);
 			return null;
 		}
 	}
 
-	private void convertFileRecursive(File f, String srcExtension) {
-
-		if (f.isDirectory()) {
-			File[] files = f.listFiles();
-			for (File file : files) {
-				convertFileRecursive(file, srcExtension);
-			}
-		} else {
-			if (f.getName().toLowerCase().endsWith(srcExtension)) {
-				File outputFile = convertFile(f, false, false);
-				if (outputFile != null && outputFile != f) {
-					logText(f.getAbsolutePath() + "--> " + outputFile.getName());
-				} else {
-					logTextError(f.getAbsolutePath() + "--> Error, could not convert!");
-				}
-			}
-		}
-	}
-
-	/**
-	 * shows the files chosen that are selected within the FIleChooser in the 3d Window
-	 *
-	 * @param tempPreview if true the output files are temporary and will be deleted, if false they will be kept (ie for the conversion function of the program)
-	 */
-	protected void displaySelectedFiles(boolean tempPreview) {
-		System.out.println("displaySelectedFiles("+tempPreview+")");
-		if (fileChooser == null) {
-			System.err.println("fileChooser was null");
-			return;
-		}
-		File[] files = fileChooser.getSelectedFilesToConvert();
-		if(files.length == 0){
-			System.out.println("files.length == 0");
-		}else{
-			threadPool.submit(new PreviewFilesCallable(files, tempPreview));
-
-		}
+	void displayFiles(File[] files, DisplayFileFunction displayFunction){
+		threadPool.submit(new PreviewFilesCallable(files, displayFunction));
 	}
 
 	private class PreviewFilesCallable implements Callable<Void> {
 
 		private final File[] files;
-		private final boolean tempPreview;
+		private final DisplayFileFunction displayFunction;
 
-		public PreviewFilesCallable(File[] files, boolean tempPreview) {
+		public PreviewFilesCallable(File[] files, DisplayFileFunction displayFunction) {
 			this.files = files;
-			this.tempPreview = tempPreview;
+			this.displayFunction = displayFunction;
 		}
 
 		@Override
@@ -625,13 +266,9 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 			});
 
 
-			final File[] outputFiles = new File[files.length];
-
-			currentPreviewNum = 0;
-			for (int i = 0; i < files.length; i++) {
-				final File newF = convertFile(files[i], tempPreview, true);
-				outputFiles[i] = newF;
-			}
+			fbxConvTool.logDetailedOutput = true;
+			fbxConvTool.displayFunction = displayFunction;
+			final File[] outputFiles = fbxConvTool.convertFiles(files);
 
 			Gdx.app.postRunnable(new Runnable() {
 				@Override
@@ -646,15 +283,18 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 							try {
 								modelPreviewApp.previewFile(newF);
 							} catch (GdxRuntimeException ex) {
-								logTextError("Error while previewing file: " + srcF.getName());
-								logTextError(ex);
+								log.error("Error while previewing file: " + srcF.getName());
+								log.error(ex);
 								modelPreviewApp.previewFile(null);
 							}
 
 						}
 
+						// TODO: i got an error before not being able to preview the file because it didnt exist
+						// seems to be a concurrency thing, but the code appears to be sequential...
+
 						// only delete newF if it is a temp file that was made in convertFile
-						if (tempPreview && newF != srcF && newF != null && !newF.isDirectory()) {
+						if (displayFunction == DisplayFileFunction.PreviewOnly && newF != srcF && newF != null && !newF.isDirectory()) {
 							newF.delete();
 						}
 
@@ -662,188 +302,13 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 					SwingUtilities.invokeLater(new Runnable() {
 						@Override
 						public void run() {
-							fileChooser.refreshFileChooserList();
+							fileConverterSideBar.fileChooser.refreshFileChooserList();
 						}
 					});
 				}
 			});
 			return null;
 		}
-	}
-
-	/**
-	 * @param f
-	 * @param tempPreview
-	 * @deprecated use displaySelectedFiles instead
-	 */
-	protected void previewFile(final File f, final boolean tempPreview) {
-
-		threadPool.submit(new PreviewFileCallable(f, tempPreview));
-	}
-
-	@Deprecated
-	private class PreviewFileCallable implements Callable<Void> {
-
-		private final File f;
-		private final boolean tempPreview;
-
-		PreviewFileCallable(File f, boolean tempPreview) {
-			this.f = f;
-			this.tempPreview = tempPreview;
-		}
-
-		@Override
-		public Void call() throws Exception {
-			Gdx.app.postRunnable(new Runnable() {
-				@Override
-				public void run() {
-					if (tempPreview || f == null)
-						modelPreviewApp.showLoadingText("Loading...");
-					else
-						modelPreviewApp.showLoadingText("Converting\n" + f.getName());
-				}
-			});
-
-
-			currentPreviewNum = 0;
-			final File newF = convertFile(f, tempPreview, true);
-
-			Gdx.app.postRunnable(new Runnable() {
-				@Override
-				public void run() {
-					if (newF == null || newF.isDirectory()) {
-						modelPreviewApp.previewFile(null);
-					} else {
-						try {
-							modelPreviewApp.previewFile(newF);
-						} catch (GdxRuntimeException ex) {
-							logTextError("Error while previewing file: " + f.getName());
-							logTextError(ex);
-							modelPreviewApp.previewFile(null);
-						}
-
-					}
-
-					if (tempPreview && newF != f && newF != null && !newF.isDirectory()) { // only delete newF if it is a temp file that was made in convertFile
-						newF.delete();
-					}
-
-					SwingUtilities.invokeLater(new Runnable() {
-						@Override
-						public void run() {
-							fileChooser.refreshFileChooserList();
-						}
-					});
-				}
-			});
-
-			return null;
-		}
-	}
-
-
-	private int currentPreviewNum = 0;
-
-	private File convertFile(File f, boolean tempPreview, boolean logDetailedOutput) {
-		if (logDetailedOutput) {
-			if (f != null && !f.isDirectory()) {
-				if (tempPreview)
-					logTextClear("Previewing: " + f.getName());
-				else
-					logTextClear("Converting: " + f.getName());
-			} else {
-				logTextClear();
-			}
-		}
-
-
-		if (f == null || f.isDirectory()) {
-			return null; // not a model file
-		}
-		String srcPath = f.getAbsolutePath();
-		String srcLower = srcPath.toLowerCase();
-		if (srcLower.endsWith(".g3db") || srcLower.endsWith(".g3dj")) {
-			return f; // Already in desirable format, return the same file
-		}
-
-		if (!fbxConvLocationBox.hasValidValue()) {
-			if (logDetailedOutput)
-				logTextError("Can not convert file, fbx-conv location is not yet configured.");
-			return null;
-		}
-
-		File targetDir = f.getParentFile();
-		String dstExtension = tempPreview || outputFileTypeBox.getValue().equals("G3DJ") ? ".g3dj" : ".g3db";
-		String dstPath;
-
-		if (tempPreview) {
-			dstPath = targetDir + fbxConvLocationBox.dirSeperator + "libgdx-model-viewer." + currentPreviewNum + ".temp" + dstExtension;
-			currentPreviewNum++;
-		} else {
-			dstPath = targetDir + fbxConvLocationBox.dirSeperator + stripExtension(f.getName()) + dstExtension;
-		}
-		File convertedFile = new File(dstPath);
-		try {
-
-			if (logDetailedOutput) {
-				//logText("-----------------------------------");
-			}
-
-			ProcessBuilder p = new ProcessBuilder(fbxConvLocationBox.getValue(), "-v");
-			if (flipTextureCoords.isSelected())
-				p.command().add("-f");
-			if (packVertexColors.isSelected())
-				p.command().add("-p");
-			p.command().add("-m");
-			p.command().add(maxVertxPanel.getString());
-			p.command().add("-b");
-			p.command().add(maxBonesPanel.getString());
-			p.command().add("-w");
-			p.command().add(maxBonesWeightsPanel.getString());
-			p.command().add(srcPath);
-			p.command().add(dstPath);
-			if (logDetailedOutput) {
-				logText("\n" + shortenCommand(p.command(), fbxConvLocationBox.getValueName(), f.getName(), convertedFile.getName()) + "\n");
-			}
-
-			String output = processOutput(p.start());
-			if (logDetailedOutput) {
-				logText(output);
-			}
-
-		} catch (IOException e) {
-			boolean possibleBadInstallation;
-			try {
-				Process proc = Runtime.getRuntime().exec(fbxConvLocationBox.getValue(), null, null);
-				String output = DesktopLauncher.processOutput(proc);
-				possibleBadInstallation = !output.contains("fbx-conv");
-			} catch (IOException ex) {
-				possibleBadInstallation = true;
-			}
-			if (possibleBadInstallation) {
-				logTextError(e, "It's possible you either selected the wrong executable file, or you don't have fbx-conv installed correctly.\nIf you're on mac or linux be sure that libfbxsdk.dylib and libfbxsdk.so are in /usr/lib");
-			} else {
-				logTextError(e);
-			}
-			return null;
-		}
-
-		return convertedFile;
-	}
-
-	protected static String stripExtension(String str) {
-		if (str == null) return null;
-		int pos = str.lastIndexOf(".");
-		if (pos == -1) return str;
-		return str.substring(0, pos);
-	}
-
-	private static String shortenCommand(List<String> command, String shortExecName, String shortSrcName, String shortDstName) {
-		String output = shortExecName + " ";
-		for (int i = 1; i < command.size() - 2; i++) {
-			output += command.get(i) + " ";
-		}
-		return output + " " + shortSrcName + " " + shortDstName;
 	}
 
 	private static String stringArrayToString(String[] stringArray) {
@@ -859,16 +324,12 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 		return output.substring(0, output.length() - 1);
 	}
 
-	protected static String processOutput(Process proc) throws java.io.IOException {
-		java.io.InputStream is = proc.getInputStream();
-		java.util.Scanner s = new java.util.Scanner(is).useDelimiter("\\A");
-		String val = "";
-		if (s.hasNext()) {
-			val = s.next();
-		} else {
-			val = "";
+	static String arrayToString(Object[] obj){
+		String out = "";
+		for (Object o : obj) {
+			out += o +", ";
 		}
-		return val;
+		return out;
 	}
 
 	private class DnDTransferHandler extends TransferHandler {
@@ -893,7 +354,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 					for (int i = 0; i < data.size(); i++) {
 						filesToSelect[i] = data.get(i);
 					}
-					fileChooser.setSelectedFile(filesToSelect);
+					fileConverterSideBar.fileChooser.setSelectedFile(filesToSelect);
 					//convertFilesAsBatch(data);
 					return true;
 				}else{
@@ -901,8 +362,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 				}
 
 			}catch(Exception ex){
-				System.err.println("import data error: "+ex.getMessage());
-				ex.printStackTrace();
+				log.debugError(ex, "import data error: "+ex.getMessage());
 				return false;
 			}
 		}

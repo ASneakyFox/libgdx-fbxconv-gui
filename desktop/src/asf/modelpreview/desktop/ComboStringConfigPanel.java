@@ -1,13 +1,8 @@
 package asf.modelpreview.desktop;
 
-import javax.swing.BoxLayout;
-import javax.swing.ComboBoxModel;
-import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.event.ListDataListener;
-import java.awt.FlowLayout;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
 

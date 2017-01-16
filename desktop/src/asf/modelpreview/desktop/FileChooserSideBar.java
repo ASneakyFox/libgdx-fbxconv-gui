@@ -2,19 +2,15 @@ package asf.modelpreview.desktop;
 
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.plaf.basic.BasicFileChooserUI;
 import java.awt.BorderLayout;
-import java.awt.Desktop;
 import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
-import java.net.URI;
-import java.util.List;
 
 /**
  * Created by Danny on 10/30/2014.
@@ -121,7 +117,7 @@ public class FileChooserSideBar {
 				@Override
 				protected void onChange() {
 					if (isSelected())
-						desktopLauncher.displaySelectedFiles(true);
+						displaySelectedFiles(DisplayFileFunction.PreviewOnly);
 				}
 			};
 
@@ -131,7 +127,7 @@ public class FileChooserSideBar {
 			previewFileButton.addActionListener(new ActionListener() {
 				@Override
 				public void actionPerformed(final ActionEvent e) {
-					desktopLauncher.displaySelectedFiles(true);
+					displaySelectedFiles(DisplayFileFunction.PreviewOnly);
 				}
 			});
 
@@ -141,7 +137,7 @@ public class FileChooserSideBar {
 			convertButton.addActionListener(new ActionListener() {
 				@Override
 				public void actionPerformed(ActionEvent e) {
-					desktopLauncher.displaySelectedFiles(false);
+					displaySelectedFiles(DisplayFileFunction.KeepOutput);
 				}
 			});
 
@@ -162,10 +158,9 @@ public class FileChooserSideBar {
 	}
 
 	private void onSelectedFileChanged() {
-		System.out.println("onSelectedFileChanged");
+		desktopLauncher.log.debug("onSelectedFileChanged");
 		refreshConvertButtonText();
-		if (automaticPreviewBox.isSelected())
-			desktopLauncher.displaySelectedFiles(true);
+		refreshPreview();
 	}
 
 	protected void refreshConvertButtonText() {
@@ -179,8 +174,8 @@ public class FileChooserSideBar {
 		}else if(selectedFiles.length == 1){
 			File sf = fileChooser.getSelectedFile();
 			if (isFileCanBeConverted(sf)) {
-				String ext = desktopLauncher.outputFileTypeBox.getValue().toLowerCase();
-				String val = DesktopLauncher.stripExtension(sf.getName()) + "." + ext;
+				String ext = desktopLauncher.fileConverterSideBar.outputFileTypeBox.getValue().toLowerCase();
+				String val = FbxConvTool.stripExtension(sf.getName()) + "." + ext;
 				convertButton.setText("Convert "+sf.getName()+" to: " + val);
 				convertButton.setEnabled(true);
 			} else {
@@ -188,7 +183,7 @@ public class FileChooserSideBar {
 				convertButton.setEnabled(false);
 			}
 		}else{
-			String ext = desktopLauncher.outputFileTypeBox.getValue().toLowerCase();
+			String ext = desktopLauncher.fileConverterSideBar.outputFileTypeBox.getValue().toLowerCase();
 			convertButton.setText("Batch Convert "+selectedFiles.length+" files to ."+ext);
 			convertButton.setEnabled(true);
 		}
@@ -206,6 +201,21 @@ public class FileChooserSideBar {
 
 	public File[] getSelectedFilesToConvert(){
 		return fileChooser.getSelectedFiles();
+	}
+
+	protected void refreshPreview(){
+		if (isAutomaticPreview())
+			displaySelectedFiles(DisplayFileFunction.PreviewOnly);
+	}
+
+	protected void displaySelectedFiles(DisplayFileFunction displayFunction) {
+		File[] files = getSelectedFilesToConvert();
+		if(files.length == 0){
+			desktopLauncher.log.debug("--files.length == 0");
+		}else{
+			desktopLauncher.log.debug("--files: "+DesktopLauncher.arrayToString(files));
+			desktopLauncher.displayFiles(files, displayFunction);
+		}
 	}
 
 	/**

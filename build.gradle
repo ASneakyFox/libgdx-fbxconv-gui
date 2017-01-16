@@ -1,20 +1,22 @@
 buildscript {
     repositories {
+        jcenter()
         mavenCentral()
+        maven { url "https://oss.sonatype.org/content/repositories/snapshots/" }
+        maven { url "https://oss.sonatype.org/content/repositories/releases/" }
     }
     dependencies {
     }
 }
 
 allprojects {
-    apply plugin: "eclipse"
     apply plugin: "idea"
 
     version = '1.5'
     ext {
         appName = 'modelpreview'
         gdxVersion = '1.9.5'
-        roboVMVersion = '1.12.0'
+        visuiVersion = '1.3.0-SNAPSHOT'
     }
 
     repositories {
@@ -33,6 +35,7 @@ project(":desktop") {
         compile project(":core")
         compile "com.badlogicgames.gdx:gdx-backend-lwjgl:$gdxVersion"
         compile "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
+        compile "com.badlogicgames.gdx:gdx-tools:$gdxVersion"
         compile "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-desktop"
     	compile "com.miglayout:miglayout-swing:5.0"
     }
@@ -45,9 +48,7 @@ project(":core") {
     dependencies {
         compile "com.badlogicgames.gdx:gdx:$gdxVersion"
         compile "com.badlogicgames.gdx:gdx-freetype:$gdxVersion"
+        compile "com.kotcrab.vis:vis-ui:$visuiVersion"
+        compile "net.dermetfan.libgdx-utils:libgdx-utils:0.13.3"
     }
-}
-
-tasks.eclipse.doLast {
-    delete ".project"
 }
