@@ -3,9 +3,11 @@ package asf.modelpreview.desktop;
 import asf.modelpreview.ModelPreviewApp;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.backends.lwjgl.LwjglAWTCanvas;
+import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.g3d.model.Animation;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.GdxRuntimeException;
+import com.badlogic.gdx.utils.I18NBundle;
 
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
@@ -41,6 +43,8 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.URI;
 import java.util.List;
+import java.util.Locale;
+import java.util.ResourceBundle;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -49,7 +53,6 @@ import java.util.prefs.Preferences;
 public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 
 	public static void main(String[] arg) {
-
 		SwingUtilities.invokeLater(new Runnable() {
 			@Override
 			public void run() {
@@ -60,6 +63,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 
 	public final Preferences prefs;
 	private final ExecutorService threadPool;
+	private final ResourceBundle i18n;
 	protected final JFrame frame;
 
 	private FileChooserSideBar fileChooser;
@@ -95,18 +99,18 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 	private static final String B_alphaTest = "B_alphaTest";
 	private static final String I_alphaTest = "I_alphaTest";
 
-	public DesktopLauncher() {
-		prefs = Preferences.userRoot().node("LibGDXModelPreviewUtility");
-
-
-		threadPool = Executors.newCachedThreadPool();
+	private static ExecutorService createThreadPool() {
+		final ExecutorService threadPool = Executors.newCachedThreadPool();
 		Runtime.getRuntime().addShutdownHook(new Thread() {
 			@Override
 			public void run() {
 				threadPool.shutdownNow();
 			}
 		});
+		return threadPool;
+	}
 
+	private void initAppearance() {
 		try {
 			for (UIManager.LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
 				if ("Nimbus".equals(info.getName())) {
@@ -117,13 +121,27 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 		} catch (Exception e) {
 			// If Nimbus is not available, you can set the GUI to another look and feel.
 		}
-
-
 		///JPopupMenu.setDefaultLightWeightPopupEnabled(true);
 		UIManager.put("FileChooser.readOnly", Boolean.TRUE);
+	}
+
+	private ResourceBundle createI18N() {
+		Locale currentLocale = new Locale("en");
+		return ResourceBundle.getBundle("Labels", currentLocale);
+	}
+
+	private String getI18nLabel(String key) {
+		return i18n.getString(key);
+	}
+
+	private DesktopLauncher() {
+		prefs = Preferences.userRoot().node("LibGDXModelPreviewUtility");
+		i18n = createI18N();
+		threadPool = createThreadPool();
+		initAppearance();
 
 
-		frame = new JFrame("LibGDX Model Preview Utility");
+		frame = new JFrame(getI18nLabel("appTitle"));
 		TransferHandler handler = new TransferHandler() {
 			@Override
 			public boolean canImport(TransferSupport support) {
@@ -185,7 +203,8 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 				BoxLayout bl = new BoxLayout(configPanel, BoxLayout.PAGE_AXIS);
 				configPanel.setLayout(bl);
 				JScrollPane configPanelScrollPane = new JScrollPane(configPanel);
-				mainTabbedPane.addTab("File Browser", null, configPanelScrollPane, "Configure fbx-conv");
+				mainTabbedPane.addTab(getI18nLabel("tabFileBrower"), null, configPanelScrollPane,
+					getI18nLabel("tabFileBrowerTooltip"));
 
 				fileChooser = new FileChooserSideBar(this, configPanel);
 
@@ -196,7 +215,8 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 
 				JPanel flipBase = new JPanel();
 				configPanel.add(flipBase);
-				flipTextureCoords = new BooleanConfigPanel(this, flipBase, "Flip V Texture Coordinates", B_flipVTextureCoords, true) {
+				flipTextureCoords = new BooleanConfigPanel(this, flipBase,
+					getI18nLabel("configPanelFlipTextureCoords"), B_flipVTextureCoords, true) {
 					@Override
 					protected void onChange() {
 						if (fileChooser.isAutomaticPreview())
@@ -205,7 +225,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 				};
 
 				maxVertxPanel = new NumberConfigPanel(this, I_maxVertPerMesh, configPanel,
-					"Max Verticies per mesh (k)", 32, 1, 50, 1) {
+					getI18nLabel("configPanelMaxVertices"), 32767, 1, 32767, 1000) {
 					@Override
 					protected void onChange() {
 						if (fileChooser.isAutomaticPreview())
@@ -213,7 +233,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 					}
 				};
 				maxBonesPanel = new NumberConfigPanel(this, I_maxBonePerNodepart, configPanel,
-					"Max Bones per nodepart", 12, 1, 50, 1) {
+					getI18nLabel("configPanelMaxBones"), 12, 1, 50, 1) {
 					@Override
 					protected void onChange() {
 						if (fileChooser.isAutomaticPreview())
@@ -221,7 +241,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 					}
 				};
 				maxBonesWeightsPanel = new NumberConfigPanel(this, I_maxBoneWeightPerVertex, configPanel,
-					"Max Bone Weights per vertex", 4, 1, 50, 1) {
+					getI18nLabel("configPanelMaxBoneWeights"), 4, 1, 50, 1) {
 					@Override
 					protected void onChange() {
 						if (fileChooser.isAutomaticPreview())
@@ -230,8 +250,8 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 				};
 				JPanel packBase = new JPanel();
 				configPanel.add(packBase);
-				packVertexColors = new BooleanConfigPanel(this, packBase, "Pack vertex colors to one float", B_packVertexColorsToOneFloat,
-					false) {
+				packVertexColors = new BooleanConfigPanel(this, packBase,
+					getI18nLabel("configPanelPackVertexColors"), B_packVertexColorsToOneFloat, false) {
 					@Override
 					protected void onChange() {
 						if (fileChooser.isAutomaticPreview())
@@ -240,7 +260,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 				};
 
 				outputFileTypeBox = new ComboStringConfigPanel(this, S_outputFileType, configPanel,
-					"Output Format", "G3DB", new String[]{"G3DB", "G3DJ"}) {
+					getI18nLabel("configPanelOutputFormat"), "G3DB", new String[]{"G3DB", "G3DJ"}) {
 					@Override
 					protected void onChange() {
 						fileChooser.refreshConvertButtonText();
@@ -254,13 +274,14 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 
 				JPanel viewportSettingsPanel = new JPanel();
 				JScrollPane viewportSettingsPanelScrollPane = new JScrollPane(viewportSettingsPanel);
-				mainTabbedPane.addTab("Viewport Settings", null, viewportSettingsPanelScrollPane, "Viewport Settings");
+				mainTabbedPane.addTab(getI18nLabel("tabViewportSettings"), null, viewportSettingsPanelScrollPane, getI18nLabel("tabViewportSettingsTooltip"));
 				BoxLayout bl = new BoxLayout(viewportSettingsPanel, BoxLayout.PAGE_AXIS);
 				viewportSettingsPanel.setLayout(bl);
 
 				JPanel baseEnvPanel = new JPanel();
 				viewportSettingsPanel.add(baseEnvPanel);
-				environmentLightingBox = new BooleanConfigPanel(this, baseEnvPanel, "Environment Lighting", B_environmentLighting,
+				environmentLightingBox = new BooleanConfigPanel(this, baseEnvPanel, getI18nLabel("panelEnvironmentLighting"),
+					B_environmentLighting,
 					true) {
 					@Override
 					protected void onChange() {
@@ -270,7 +291,8 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 
 				JPanel baseBackFacePanel = new JPanel();
 				viewportSettingsPanel.add(baseBackFacePanel);
-				backFaceCullingBox = new BooleanConfigPanel(this, baseBackFacePanel, "Back Face Culling", B_backFaceCulling,
+				backFaceCullingBox = new BooleanConfigPanel(this, baseBackFacePanel, getI18nLabel("panelBackFaceCulling"),
+					B_backFaceCulling,
 					true) {
 					@Override
 					protected void onChange() {
@@ -287,7 +309,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 
 				JPanel baseAlphaBlending = new JPanel();
 				viewportSettingsPanel.add(baseAlphaBlending);
-				alphaBlendingBox = new BooleanConfigPanel(this, baseAlphaBlending, "Alpha Blending", B_alphaBlending,
+				alphaBlendingBox = new BooleanConfigPanel(this, baseAlphaBlending, getI18nLabel("panelAlphaBlending"), B_alphaBlending,
 					true) {
 					@Override
 					protected void onChange() {
@@ -304,7 +326,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 
 				JPanel baseAlphaTest = new JPanel();
 				viewportSettingsPanel.add(baseAlphaTest);
-				alphaTestBox = new BooleanIntegerConfigPanel(this, baseAlphaTest, "Alpha Test",
+				alphaTestBox = new BooleanIntegerConfigPanel(this, baseAlphaTest, getI18nLabel("panelAlphaTest"),
 					B_alphaTest, false,
 					I_alphaTest, 50, 0, 100, 1) {
 					@Override
@@ -325,7 +347,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 
 				JPanel baseAnimPanel = new JPanel();
 				viewportSettingsPanel.add(baseAnimPanel);
-				baseAnimPanel.add(new JLabel("Animation: "));
+				baseAnimPanel.add(new JLabel(getI18nLabel("panelAnimation")));
 				animComboBox = new JComboBox<Animation>();
 				baseAnimPanel.add(animComboBox);
 
@@ -334,7 +356,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 					@Override
 					public Component getListCellRendererComponent(JList list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
 						if (value == null) {
-							setText("<No Animation>");
+							setText(getI18nLabel("panelAnimationComboNone"));
 						} else {
 							Animation anim = (Animation) value;
 							setText(anim.id + "  -  " + anim.duration);
@@ -358,7 +380,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 
 				JPanel baseCamPanel = new JPanel();
 				viewportSettingsPanel.add(baseCamPanel);
-				JButton resetCamButton = new JButton("Reset Camera");
+				JButton resetCamButton = new JButton(getI18nLabel("panelResetCamera"));
 				baseCamPanel.add(resetCamButton);
 				resetCamButton.addActionListener(new ActionListener() {
 					@Override
@@ -379,7 +401,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 				outputTextPane = new JTextPane();
 				outputTextPane.setEditable(false);
 				outputTextScrollPane = new JScrollPane(outputTextPane);
-				mainTabbedPane.addTab("Output Console", null, outputTextScrollPane, "Output");
+				mainTabbedPane.addTab(getI18nLabel("tabOutput"), null, outputTextScrollPane, getI18nLabel("tabOutputTooltip"));
 			}
 
 
@@ -387,10 +409,8 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 			{
 				JPanel aboutPanel = new JPanel(new BorderLayout());
 				JScrollPane aboutScrollPane = new JScrollPane(aboutPanel);
-
-				String text = "libgdx-fbxconv-gui is a lightweight program created by Daniel Strong to help make it easier to get your 3D models ready for LibGDX.";
-				text += "\n\nIf you need help or want more information about this software then visit the github page at: http://asneakyfox.github.io/libgdx-fbxconv-gui/";
-				JTextArea aboutTextPane = new JTextArea(text);
+				mainTabbedPane.addTab(getI18nLabel("tabAbout"), null, aboutScrollPane, getI18nLabel("tabAboutTooltip"));
+				JTextArea aboutTextPane = new JTextArea(getI18nLabel("aboutText"));
 				aboutTextPane.setLineWrap(true);
 				aboutTextPane.setWrapStyleWord(true);
 				aboutTextPane.setEditable(false);
@@ -399,20 +419,20 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 				aboutPanel.add(aboutTextPane, BorderLayout.CENTER);
 
 
-				JButton githubUrlButton = new JButton("View on Github");
+				JButton githubUrlButton = new JButton(getI18nLabel("aboutButtonViewOnGitHub"));
 				githubUrlButton.addActionListener(new ActionListener() {
 					@Override
 					public void actionPerformed(ActionEvent e) {
 						try {
-							Desktop.getDesktop().browse(new URI("http://asneakyfox.github.io/libgdx-fbxconv-gui/"));
+							Desktop.getDesktop().browse(new URI(getI18nLabel("aboutButtonViewOnGitHubUrl")));
 						} catch (Throwable t) {
-							JOptionPane.showMessageDialog(frame, "I couldnt open your browser while trying to navigate to:\n\nhttp://asneakyfox.github.io/libgdx-fbxconv-gui/");
+							JOptionPane.showMessageDialog(frame, getI18nLabel("aboutButtonViewOnGitHubError"));
 						}
 					}
 				});
 				aboutPanel.add(githubUrlButton, BorderLayout.SOUTH);
 
-				mainTabbedPane.addTab("About", null, aboutScrollPane, "About");
+
 
 			}
 		}
