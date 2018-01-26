@@ -3,36 +3,13 @@ package asf.modelpreview.desktop;
 import asf.modelpreview.ModelPreviewApp;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.backends.lwjgl.LwjglAWTCanvas;
-import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.g3d.model.Animation;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.GdxRuntimeException;
-import com.badlogic.gdx.utils.I18NBundle;
 
-import javax.swing.BoxLayout;
-import javax.swing.JButton;
-import javax.swing.JComboBox;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JList;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JSeparator;
-import javax.swing.JTabbedPane;
-import javax.swing.JTextArea;
-import javax.swing.JTextPane;
-import javax.swing.SwingUtilities;
-import javax.swing.TransferHandler;
-import javax.swing.UIManager;
-import javax.swing.WindowConstants;
+import javax.swing.*;
 import javax.swing.plaf.basic.BasicComboBoxRenderer;
-import java.awt.BorderLayout;
-import java.awt.Component;
-import java.awt.Container;
-import java.awt.Desktop;
-import java.awt.Dimension;
-import java.awt.Toolkit;
+import java.awt.*;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
 import java.awt.event.ActionEvent;
@@ -177,7 +154,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 		frame.setTransferHandler(handler);
 		frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
 		final Container container = frame.getContentPane();
-		///container.setLayout(new BorderLayout());
+
 		container.setLayout(new BoxLayout(container, BoxLayout.LINE_AXIS));
 
 		mainTabbedPane = new JTabbedPane();
@@ -185,258 +162,12 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 		mainTabbedPane.setPreferredSize(new Dimension(525, 1000));
 		mainTabbedPane.setMaximumSize(new Dimension(550, 2000));
 		container.add(mainTabbedPane);
+		container.add(createGameCanvas());
 
-		// center tabbed pane
-		{
-			modelPreviewApp = new ModelPreviewApp(this);
-			modelPreviewApp.backgroundColor.set(100 / 255f, 149 / 255f, 237 / 255f, 1f);
-			LwjglAWTCanvas canvas = new LwjglAWTCanvas(modelPreviewApp);
-			container.add(canvas.getCanvas());
-		}
-
-		// Left Side Tool Bar
-		{
-
-			// fbx-conv Configuration
-			{
-				JPanel configPanel = new JPanel();
-				BoxLayout bl = new BoxLayout(configPanel, BoxLayout.PAGE_AXIS);
-				configPanel.setLayout(bl);
-				JScrollPane configPanelScrollPane = new JScrollPane(configPanel);
-				mainTabbedPane.addTab(getI18nLabel("tabFileBrower"), null, configPanelScrollPane,
-					getI18nLabel("tabFileBrowerTooltip"));
-
-				fileChooser = new FileChooserSideBar(this, configPanel);
-
-				configPanel.add(new JSeparator());
-
-				fbxConvLocationBox = new FileChooserFbxConv(this, S_fbxConvLocation, configPanel);
-
-
-				JPanel flipBase = new JPanel();
-				configPanel.add(flipBase);
-				flipTextureCoords = new BooleanConfigPanel(this, flipBase,
-					getI18nLabel("configPanelFlipTextureCoords"), B_flipVTextureCoords, true) {
-					@Override
-					protected void onChange() {
-						if (fileChooser.isAutomaticPreview())
-							displaySelectedFiles(true);
-					}
-				};
-
-				maxVertxPanel = new NumberConfigPanel(this, I_maxVertPerMesh, configPanel,
-					getI18nLabel("configPanelMaxVertices"), 32767, 1, 32767, 1000) {
-					@Override
-					protected void onChange() {
-						if (fileChooser.isAutomaticPreview())
-							displaySelectedFiles(true);
-					}
-				};
-				maxBonesPanel = new NumberConfigPanel(this, I_maxBonePerNodepart, configPanel,
-					getI18nLabel("configPanelMaxBones"), 12, 1, 50, 1) {
-					@Override
-					protected void onChange() {
-						if (fileChooser.isAutomaticPreview())
-							displaySelectedFiles(true);
-					}
-				};
-				maxBonesWeightsPanel = new NumberConfigPanel(this, I_maxBoneWeightPerVertex, configPanel,
-					getI18nLabel("configPanelMaxBoneWeights"), 4, 1, 50, 1) {
-					@Override
-					protected void onChange() {
-						if (fileChooser.isAutomaticPreview())
-							displaySelectedFiles(true);
-					}
-				};
-				JPanel packBase = new JPanel();
-				configPanel.add(packBase);
-				packVertexColors = new BooleanConfigPanel(this, packBase,
-					getI18nLabel("configPanelPackVertexColors"), B_packVertexColorsToOneFloat, false) {
-					@Override
-					protected void onChange() {
-						if (fileChooser.isAutomaticPreview())
-							displaySelectedFiles(true);
-					}
-				};
-
-				outputFileTypeBox = new ComboStringConfigPanel(this, S_outputFileType, configPanel,
-					getI18nLabel("configPanelOutputFormat"), "G3DB", new String[]{"G3DB", "G3DJ"}) {
-					@Override
-					protected void onChange() {
-						fileChooser.refreshConvertButtonText();
-					}
-				};
-
-
-			}
-			// Viewport Settings
-			{
-
-				JPanel viewportSettingsPanel = new JPanel();
-				JScrollPane viewportSettingsPanelScrollPane = new JScrollPane(viewportSettingsPanel);
-				mainTabbedPane.addTab(getI18nLabel("tabViewportSettings"), null, viewportSettingsPanelScrollPane, getI18nLabel("tabViewportSettingsTooltip"));
-				BoxLayout bl = new BoxLayout(viewportSettingsPanel, BoxLayout.PAGE_AXIS);
-				viewportSettingsPanel.setLayout(bl);
-
-				JPanel baseEnvPanel = new JPanel();
-				viewportSettingsPanel.add(baseEnvPanel);
-				environmentLightingBox = new BooleanConfigPanel(this, baseEnvPanel, getI18nLabel("panelEnvironmentLighting"),
-					B_environmentLighting,
-					true) {
-					@Override
-					protected void onChange() {
-						modelPreviewApp.environmentLightingEnabled = isSelected();
-					}
-				};
-
-				JPanel baseBackFacePanel = new JPanel();
-				viewportSettingsPanel.add(baseBackFacePanel);
-				backFaceCullingBox = new BooleanConfigPanel(this, baseBackFacePanel, getI18nLabel("panelBackFaceCulling"),
-					B_backFaceCulling,
-					true) {
-					@Override
-					protected void onChange() {
-						Gdx.app.postRunnable(new Runnable() {
-							@Override
-							public void run() {
-								modelPreviewApp.setBackFaceCulling(isSelected());
-							}
-						});
-					}
-				};
-				backFaceCullingBox.checkBox.setToolTipText("mat.set(new IntAttribute(IntAttribute.CullFace, 0));");
-
-
-				JPanel baseAlphaBlending = new JPanel();
-				viewportSettingsPanel.add(baseAlphaBlending);
-				alphaBlendingBox = new BooleanConfigPanel(this, baseAlphaBlending, getI18nLabel("panelAlphaBlending"), B_alphaBlending,
-					true) {
-					@Override
-					protected void onChange() {
-						Gdx.app.postRunnable(new Runnable() {
-							@Override
-							public void run() {
-								modelPreviewApp.setAlphaBlending(isSelected());
-							}
-						});
-					}
-				};
-				alphaBlendingBox.checkBox.setToolTipText("mat.set(new BlendingAttribute(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA));");
-
-
-				JPanel baseAlphaTest = new JPanel();
-				viewportSettingsPanel.add(baseAlphaTest);
-				alphaTestBox = new BooleanIntegerConfigPanel(this, baseAlphaTest, getI18nLabel("panelAlphaTest"),
-					B_alphaTest, false,
-					I_alphaTest, 50, 0, 100, 1) {
-					@Override
-					protected void onChange() {
-						Gdx.app.postRunnable(new Runnable() {
-							@Override
-							public void run() {
-								if (getBooleanValue())
-									modelPreviewApp.setAlphaTest(getIntegerValue() / 100f);
-								else
-									modelPreviewApp.setAlphaTest(-1f);
-							}
-						});
-					}
-				};
-				alphaTestBox.checkBox.setToolTipText("mat.set(new FloatAttribute(FloatAttribute.AlphaTest, 0.5f));");
-
-
-				JPanel baseAnimPanel = new JPanel();
-				viewportSettingsPanel.add(baseAnimPanel);
-				baseAnimPanel.add(new JLabel(getI18nLabel("panelAnimation")));
-				animComboBox = new JComboBox<Animation>();
-				baseAnimPanel.add(animComboBox);
-
-
-				BasicComboBoxRenderer animComboRenderer = new BasicComboBoxRenderer() {
-					@Override
-					public Component getListCellRendererComponent(JList list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
-						if (value == null) {
-							setText(getI18nLabel("panelAnimationComboNone"));
-						} else {
-							Animation anim = (Animation) value;
-							setText(anim.id + "  -  " + anim.duration);
-						}
-						return this;
-					}
-				};
-
-				animComboBox.setRenderer(animComboRenderer);
-
-				animComboBox.addItem(null);
-
-
-				animComboBox.addActionListener(new ActionListener() {
-					@Override
-					public void actionPerformed(ActionEvent e) {
-						modelPreviewApp.setAnimation((Animation) animComboBox.getSelectedItem());
-					}
-				});
-
-
-				JPanel baseCamPanel = new JPanel();
-				viewportSettingsPanel.add(baseCamPanel);
-				JButton resetCamButton = new JButton(getI18nLabel("panelResetCamera"));
-				baseCamPanel.add(resetCamButton);
-				resetCamButton.addActionListener(new ActionListener() {
-					@Override
-					public void actionPerformed(ActionEvent e) {
-						Gdx.app.postRunnable(new Runnable() {
-							@Override
-							public void run() {
-								modelPreviewApp.resetCam();
-							}
-						});
-					}
-				});
-
-			}
-
-			// Output Console
-			{
-				outputTextPane = new JTextPane();
-				outputTextPane.setEditable(false);
-				outputTextScrollPane = new JScrollPane(outputTextPane);
-				mainTabbedPane.addTab(getI18nLabel("tabOutput"), null, outputTextScrollPane, getI18nLabel("tabOutputTooltip"));
-			}
-
-
-			// About
-			{
-				JPanel aboutPanel = new JPanel(new BorderLayout());
-				JScrollPane aboutScrollPane = new JScrollPane(aboutPanel);
-				mainTabbedPane.addTab(getI18nLabel("tabAbout"), null, aboutScrollPane, getI18nLabel("tabAboutTooltip"));
-				JTextArea aboutTextPane = new JTextArea(getI18nLabel("aboutText"));
-				aboutTextPane.setLineWrap(true);
-				aboutTextPane.setWrapStyleWord(true);
-				aboutTextPane.setEditable(false);
-
-
-				aboutPanel.add(aboutTextPane, BorderLayout.CENTER);
-
-
-				JButton githubUrlButton = new JButton(getI18nLabel("aboutButtonViewOnGitHub"));
-				githubUrlButton.addActionListener(new ActionListener() {
-					@Override
-					public void actionPerformed(ActionEvent e) {
-						try {
-							Desktop.getDesktop().browse(new URI(getI18nLabel("aboutButtonViewOnGitHubUrl")));
-						} catch (Throwable t) {
-							JOptionPane.showMessageDialog(frame, getI18nLabel("aboutButtonViewOnGitHubError"));
-						}
-					}
-				});
-				aboutPanel.add(githubUrlButton, BorderLayout.SOUTH);
-
-
-
-			}
-		}
-
+		mainTabbedPane.addTab(getI18nLabel("tabFileBrower"), null, createConfigConvertPanel(), getI18nLabel("tabFileBrowerTooltip"));
+		mainTabbedPane.addTab(getI18nLabel("tabViewportSettings"), null, createViewportPanel(), getI18nLabel("tabViewportSettingsTooltip"));
+		mainTabbedPane.addTab(getI18nLabel("tabOutput"), null, createOutputPanel(), getI18nLabel("tabOutputTooltip"));
+		mainTabbedPane.addTab(getI18nLabel("tabAbout"), null, createAboutPanel(), getI18nLabel("tabAboutTooltip"));
 
 		frame.pack();
 
@@ -449,6 +180,244 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 		frame.setVisible(true);
 
 
+	}
+
+	private Canvas createGameCanvas() {
+		modelPreviewApp = new ModelPreviewApp(this);
+		modelPreviewApp.backgroundColor.set(100 / 255f, 149 / 255f, 237 / 255f, 1f);
+		LwjglAWTCanvas canvas = new LwjglAWTCanvas(modelPreviewApp);
+		return canvas.getCanvas();
+	}
+
+	private JComponent createConfigConvertPanel() {
+		JPanel configPanel = new JPanel();
+		BoxLayout bl = new BoxLayout(configPanel, BoxLayout.PAGE_AXIS);
+		configPanel.setLayout(bl);
+		JScrollPane configPanelScrollPane = new JScrollPane(configPanel);
+
+
+		fileChooser = new FileChooserSideBar(this, configPanel);
+
+		configPanel.add(new JSeparator());
+
+		fbxConvLocationBox = new FileChooserFbxConv(this, S_fbxConvLocation, configPanel);
+
+
+		JPanel flipBase = new JPanel();
+		configPanel.add(flipBase);
+		flipTextureCoords = new BooleanConfigPanel(this, flipBase,
+			getI18nLabel("configPanelFlipTextureCoords"), B_flipVTextureCoords, true) {
+			@Override
+			protected void onChange() {
+				if (fileChooser.isAutomaticPreview())
+					fileChooser.displaySelectedFiles(true);
+			}
+		};
+
+		maxVertxPanel = new NumberConfigPanel(this, I_maxVertPerMesh, configPanel,
+			getI18nLabel("configPanelMaxVertices"), 32767, 1, 32767, 1000) {
+			@Override
+			protected void onChange() {
+				if (fileChooser.isAutomaticPreview())
+					fileChooser.displaySelectedFiles(true);
+			}
+		};
+		maxBonesPanel = new NumberConfigPanel(this, I_maxBonePerNodepart, configPanel,
+			getI18nLabel("configPanelMaxBones"), 12, 1, 50, 1) {
+			@Override
+			protected void onChange() {
+				if (fileChooser.isAutomaticPreview())
+					fileChooser.displaySelectedFiles(true);
+			}
+		};
+		maxBonesWeightsPanel = new NumberConfigPanel(this, I_maxBoneWeightPerVertex, configPanel,
+			getI18nLabel("configPanelMaxBoneWeights"), 4, 1, 50, 1) {
+			@Override
+			protected void onChange() {
+				if (fileChooser.isAutomaticPreview())
+					fileChooser.displaySelectedFiles(true);
+			}
+		};
+		JPanel packBase = new JPanel();
+		configPanel.add(packBase);
+		packVertexColors = new BooleanConfigPanel(this, packBase,
+			getI18nLabel("configPanelPackVertexColors"), B_packVertexColorsToOneFloat, false) {
+			@Override
+			protected void onChange() {
+				if (fileChooser.isAutomaticPreview())
+					fileChooser.displaySelectedFiles(true);
+			}
+		};
+
+		outputFileTypeBox = new ComboStringConfigPanel(this, S_outputFileType, configPanel,
+			getI18nLabel("configPanelOutputFormat"), "G3DB", new String[]{"G3DB", "G3DJ"}) {
+			@Override
+			protected void onChange() {
+				fileChooser.refreshConvertButtonText();
+			}
+		};
+
+		return configPanelScrollPane;
+	}
+
+	private JComponent createViewportPanel() {
+
+
+		JPanel viewportSettingsPanel = new JPanel();
+		JScrollPane viewportSettingsPanelScrollPane = new JScrollPane(viewportSettingsPanel);
+
+		BoxLayout bl = new BoxLayout(viewportSettingsPanel, BoxLayout.PAGE_AXIS);
+		viewportSettingsPanel.setLayout(bl);
+
+		JPanel baseEnvPanel = new JPanel();
+		viewportSettingsPanel.add(baseEnvPanel);
+		environmentLightingBox = new BooleanConfigPanel(this, baseEnvPanel, getI18nLabel("panelEnvironmentLighting"), B_environmentLighting, true) {
+			@Override
+			protected void onChange() {
+				modelPreviewApp.environmentLightingEnabled = isSelected();
+			}
+		};
+
+		JPanel baseBackFacePanel = new JPanel();
+		viewportSettingsPanel.add(baseBackFacePanel);
+		backFaceCullingBox = new BooleanConfigPanel(this, baseBackFacePanel, getI18nLabel("panelBackFaceCulling"),
+			B_backFaceCulling,
+			true) {
+			@Override
+			protected void onChange() {
+				Gdx.app.postRunnable(new Runnable() {
+					@Override
+					public void run() {
+						modelPreviewApp.setBackFaceCulling(isSelected());
+					}
+				});
+			}
+		};
+		backFaceCullingBox.checkBox.setToolTipText("mat.set(new IntAttribute(IntAttribute.CullFace, 0));");
+
+
+		JPanel baseAlphaBlending = new JPanel();
+		viewportSettingsPanel.add(baseAlphaBlending);
+		alphaBlendingBox = new BooleanConfigPanel(this, baseAlphaBlending, getI18nLabel("panelAlphaBlending"), B_alphaBlending,
+			true) {
+			@Override
+			protected void onChange() {
+				Gdx.app.postRunnable(new Runnable() {
+					@Override
+					public void run() {
+						modelPreviewApp.setAlphaBlending(isSelected());
+					}
+				});
+			}
+		};
+		alphaBlendingBox.checkBox.setToolTipText("mat.set(new BlendingAttribute(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA));");
+
+
+		JPanel baseAlphaTest = new JPanel();
+		viewportSettingsPanel.add(baseAlphaTest);
+		alphaTestBox = new BooleanIntegerConfigPanel(this, baseAlphaTest, getI18nLabel("panelAlphaTest"),
+			B_alphaTest, false,
+			I_alphaTest, 50, 0, 100, 1) {
+			@Override
+			protected void onChange() {
+				Gdx.app.postRunnable(new Runnable() {
+					@Override
+					public void run() {
+						if (getBooleanValue())
+							modelPreviewApp.setAlphaTest(getIntegerValue() / 100f);
+						else
+							modelPreviewApp.setAlphaTest(-1f);
+					}
+				});
+			}
+		};
+		alphaTestBox.checkBox.setToolTipText("mat.set(new FloatAttribute(FloatAttribute.AlphaTest, 0.5f));");
+
+
+		JPanel baseAnimPanel = new JPanel();
+		viewportSettingsPanel.add(baseAnimPanel);
+		baseAnimPanel.add(new JLabel(getI18nLabel("panelAnimation")));
+		animComboBox = new JComboBox<Animation>();
+		baseAnimPanel.add(animComboBox);
+
+
+		BasicComboBoxRenderer animComboRenderer = new BasicComboBoxRenderer() {
+			@Override
+			public Component getListCellRendererComponent(JList list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+				if (value == null) {
+					setText(getI18nLabel("panelAnimationComboNone"));
+				} else {
+					Animation anim = (Animation) value;
+					setText(anim.id + "  -  " + anim.duration);
+				}
+				return this;
+			}
+		};
+
+		animComboBox.setRenderer(animComboRenderer);
+
+		animComboBox.addItem(null);
+
+
+		animComboBox.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				modelPreviewApp.setAnimation((Animation) animComboBox.getSelectedItem());
+			}
+		});
+
+
+		JPanel baseCamPanel = new JPanel();
+		viewportSettingsPanel.add(baseCamPanel);
+		JButton resetCamButton = new JButton(getI18nLabel("panelResetCamera"));
+		baseCamPanel.add(resetCamButton);
+		resetCamButton.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				Gdx.app.postRunnable(new Runnable() {
+					@Override
+					public void run() {
+						modelPreviewApp.resetCam();
+					}
+				});
+			}
+		});
+
+		return viewportSettingsPanelScrollPane;
+	}
+
+	private JComponent createOutputPanel() {
+		outputTextPane = new JTextPane();
+		outputTextPane.setEditable(false);
+		outputTextScrollPane = new JScrollPane(outputTextPane);
+		return outputTextScrollPane;
+	}
+
+	private JComponent createAboutPanel() {
+		JPanel aboutPanel = new JPanel(new BorderLayout());
+		JScrollPane aboutScrollPane = new JScrollPane(aboutPanel);
+		JTextArea aboutTextPane = new JTextArea(getI18nLabel("aboutText"));
+		aboutTextPane.setLineWrap(true);
+		aboutTextPane.setWrapStyleWord(true);
+		aboutTextPane.setEditable(false);
+
+
+		aboutPanel.add(aboutTextPane, BorderLayout.CENTER);
+
+
+		JButton githubUrlButton = new JButton(getI18nLabel("aboutButtonViewOnGitHub"));
+		githubUrlButton.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				try {
+					Desktop.getDesktop().browse(new URI(getI18nLabel("aboutButtonViewOnGitHubUrl")));
+				} catch (Throwable t) {
+					JOptionPane.showMessageDialog(frame, getI18nLabel("aboutButtonViewOnGitHubError"));
+				}
+			}
+		});
+		aboutPanel.add(githubUrlButton, BorderLayout.SOUTH);
+		return aboutScrollPane;
 	}
 
 	public void setAnimList(Array<Animation> animations) {
@@ -612,17 +581,24 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 	}
 
 	/**
-	 * shows the files chosen that are selected within the FIleChooser in the 3d Window
 	 *
-	 * @param tempPreview if true the output files are temporary and will be deleted, if false they will be kept (ie for the conversion function of the program)
+	 * Shows the supplied files in the game window
+	 *
+	 * does not update the file chooser. preferred approach here
+	 * is to change the file chooser selection, which will fire an event
+	 * to update the game window.
+	 *
+	 * @param files files to show in the game window
+	 * @param tempPreview if true, will display file using a temp file location, if false will use a permanent file location (e.g. the conversion function of this program)
 	 */
-	protected void displaySelectedFiles(boolean tempPreview) {
-		if (fileChooser == null) {
-			System.out.println("filechooser was null");
-			return;
-		}
-		File[] files = fileChooser.getSelectedFilesToConvert();
+	protected void displayFiles(final File[] files, boolean tempPreview) {
 		threadPool.submit(new PreviewFilesCallable(files, tempPreview));
+	}
+
+
+	@Deprecated
+	protected void displayFile(final File f, final boolean tempPreview) {
+		threadPool.submit(new PreviewFileCallable(f, tempPreview));
 	}
 
 	private class PreviewFilesCallable implements Callable<Void> {
@@ -689,16 +665,6 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 			});
 			return null;
 		}
-	}
-
-	/**
-	 * @param f
-	 * @param tempPreview
-	 * @deprecated use displaySelectedFiles instead
-	 */
-	protected void previewFile(final File f, final boolean tempPreview) {
-
-		threadPool.submit(new PreviewFileCallable(f, tempPreview));
 	}
 
 	@Deprecated

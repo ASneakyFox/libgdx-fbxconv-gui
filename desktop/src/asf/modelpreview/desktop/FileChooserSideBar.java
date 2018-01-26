@@ -121,7 +121,7 @@ public class FileChooserSideBar {
 				@Override
 				protected void onChange() {
 					if (isSelected())
-						desktopLauncher.displaySelectedFiles(true);
+						displaySelectedFiles(true);
 				}
 			};
 
@@ -131,7 +131,7 @@ public class FileChooserSideBar {
 			previewFileButton.addActionListener(new ActionListener() {
 				@Override
 				public void actionPerformed(final ActionEvent e) {
-					desktopLauncher.displaySelectedFiles(true);
+					displaySelectedFiles(true);
 				}
 			});
 
@@ -141,13 +141,18 @@ public class FileChooserSideBar {
 			convertButton.addActionListener(new ActionListener() {
 				@Override
 				public void actionPerformed(ActionEvent e) {
-					desktopLauncher.displaySelectedFiles(false);
+					displaySelectedFiles(false);
 				}
 			});
 
 		}
 
 
+	}
+
+	public void displaySelectedFiles(boolean tempPreview) {
+		File[] files = getSelectedFilesToConvert();
+		desktopLauncher.displayFiles(files, tempPreview);
 	}
 
 	public void setSelectedFile(File[] files) {
@@ -162,10 +167,9 @@ public class FileChooserSideBar {
 	}
 
 	private void onSelectedFileChanged() {
-		System.out.println("onSelectedFileChanged");
 		refreshConvertButtonText();
 		if (automaticPreviewBox.isSelected())
-			desktopLauncher.displaySelectedFiles(true);
+			displaySelectedFiles(true);
 	}
 
 	protected void refreshConvertButtonText() {
