@@ -184,7 +184,7 @@ public class FileChooserSideBar {
 			File sf = fileChooser.getSelectedFile();
 			if (isFileCanBeConverted(sf)) {
 				String ext = desktopLauncher.outputFileTypeBox.getValue().toLowerCase();
-				String val = DesktopLauncher.stripExtension(sf.getName()) + "." + ext;
+				String val = FileConverter.stripExtension(sf.getName()) + "." + ext;
 				convertButton.setText("Convert "+sf.getName()+" to: " + val);
 				convertButton.setEnabled(true);
 			} else {
@@ -196,8 +196,6 @@ public class FileChooserSideBar {
 			convertButton.setText("Batch Convert "+selectedFiles.length+" files to ."+ext);
 			convertButton.setEnabled(true);
 		}
-
-
 	}
 
 	public boolean isAutomaticPreview() {
