@@ -5,7 +5,6 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.backends.lwjgl.LwjglAWTCanvas;
 import com.badlogic.gdx.graphics.g3d.model.Animation;
 import com.badlogic.gdx.utils.Array;
-import com.badlogic.gdx.utils.GdxRuntimeException;
 
 import javax.swing.*;
 import javax.swing.plaf.basic.BasicComboBoxRenderer;
@@ -15,14 +14,9 @@ import java.awt.datatransfer.Transferable;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
-import java.util.ResourceBundle;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -42,13 +36,17 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 	private static final String keyPreferences = "LibGDXModelPreviewUtility";
 	private static final String keyI18n = "Labels";
 
+	private final Logger logger;
 	public final Preferences prefs;
 	private final ExecutorService threadPool;
-	private final ResourceBundle i18n;
+	private final DisplayLabelManager i18n;
 	protected final JFrame frame;
 
+	private final FileConverter fileConverter;
+	private int previewCallNum = 0;
+
 	private FileChooserSideBar fileChooser;
-	private JTabbedPane mainTabbedPane;
+	protected JTabbedPane mainTabbedPane;
 	private FileChooserFbxConv fbxConvLocationBox;
 	private BooleanConfigPanel flipTextureCoords, packVertexColors;
 	private NumberConfigPanel maxVertxPanel, maxBonesPanel, maxBonesWeightsPanel;
@@ -56,8 +54,8 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 	private BooleanConfigPanel environmentLightingBox, backFaceCullingBox, alphaBlendingBox;
 	private BooleanIntegerConfigPanel alphaTestBox;
 	private JComboBox<Animation> animComboBox;
-	private JScrollPane outputTextScrollPane;
-	private JTextPane outputTextPane;
+	protected JScrollPane outputTextScrollPane;
+	protected JTextPane outputTextPane;
 	private ModelPreviewApp modelPreviewApp;
 
 	protected static final String S_folderLocation = "S_folderLocation";
@@ -70,17 +68,36 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 	private static final String I_maxVertPerMesh = "I_maxVertPerMesh";
 	private static final String I_maxBonePerNodepart = "I_maxBonePerNodepart";
 	private static final String I_maxBoneWeightPerVertex = "I_maxBoneWeightPerVertex";
-	private static final String S_inputFileType = "S_inputFileType";
+	//private static final String S_inputFileType = "S_inputFileType";
 	private static final String S_outputFileType = "S_outputFileType";
-	private static final String S_batchConvertFileType = "S_batchConvertFileType";
+	//private static final String S_batchConvertFileType = "S_batchConvertFileType";
 	private static final String B_environmentLighting = "B_environmentLighting";
 	private static final String B_backFaceCulling = "B_backFaceCulling";
 	private static final String B_alphaBlending = "B_alphaBlending";
 	private static final String B_alphaTest = "B_alphaTest";
 	private static final String I_alphaTest = "I_alphaTest";
 
+
+	private DesktopLauncher() {
+		logger = new Logger(this);
+		prefs = Preferences.userRoot().node(keyPreferences);
+		i18n = createI18N();
+		threadPool = createThreadPool();
+		initAppearance();
+
+		fileConverter = new FileConverter(logger, i18n);
+
+		frame = new JFrame(i18n.get("appTitle"));
+		initFrame();
+	}
+
 	private static ExecutorService createThreadPool() {
-		final ExecutorService threadPool = Executors.newCachedThreadPool();
+		// TODO: would ideally like to use cached pool, but concurrency errors
+		// when changing settings or files very quickly
+		//final ExecutorService threadPool = Executors.newCachedThreadPool();
+
+		final ExecutorService threadPool = Executors.newSingleThreadExecutor();
+
 		Runtime.getRuntime().addShutdownHook(new Thread() {
 			@Override
 			public void run() {
@@ -105,23 +122,14 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 		UIManager.put("FileChooser.readOnly", Boolean.TRUE);
 	}
 
-	private ResourceBundle createI18N() {
-		Locale currentLocale = new Locale("en");
-		return ResourceBundle.getBundle(keyI18n, currentLocale);
+	private DisplayLabelManager createI18N() {
+		DisplayLabelManager labelManager = new DisplayLabelManager();
+		labelManager.loadLabels(keyI18n, "en");
+		return labelManager;
 	}
 
-	private String getI18nLabel(String key) {
-		return i18n.getString(key);
-	}
+	private void initFrame() {
 
-	private DesktopLauncher() {
-		prefs = Preferences.userRoot().node(keyPreferences);
-		i18n = createI18N();
-		threadPool = createThreadPool();
-		initAppearance();
-
-
-		frame = new JFrame(getI18nLabel("appTitle"));
 		TransferHandler handler = new TransferHandler() {
 			@Override
 			public boolean canImport(TransferSupport support) {
@@ -163,10 +171,10 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 		container.add(mainTabbedPane);
 		container.add(createGameCanvas());
 
-		mainTabbedPane.addTab(getI18nLabel("tabFileBrower"), null, createConfigConvertPanel(), getI18nLabel("tabFileBrowerTooltip"));
-		mainTabbedPane.addTab(getI18nLabel("tabViewportSettings"), null, createViewportPanel(), getI18nLabel("tabViewportSettingsTooltip"));
-		mainTabbedPane.addTab(getI18nLabel("tabOutput"), null, createOutputPanel(), getI18nLabel("tabOutputTooltip"));
-		mainTabbedPane.addTab(getI18nLabel("tabAbout"), null, createAboutPanel(), getI18nLabel("tabAboutTooltip"));
+		mainTabbedPane.addTab(i18n.get("tabFileBrower"), null, createConfigConvertPanel(), i18n.get("tabFileBrowerTooltip"));
+		mainTabbedPane.addTab(i18n.get("tabViewportSettings"), null, createViewportPanel(), i18n.get("tabViewportSettingsTooltip"));
+		mainTabbedPane.addTab(i18n.get("tabOutput"), null, createOutputPanel(), i18n.get("tabOutputTooltip"));
+		mainTabbedPane.addTab(i18n.get("tabAbout"), null, createAboutPanel(), i18n.get("tabAboutTooltip"));
 
 		frame.pack();
 
@@ -177,7 +185,6 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 		frame.setLocationRelativeTo(null);
 
 		frame.setVisible(true);
-
 
 	}
 
@@ -194,18 +201,16 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 		configPanel.setLayout(bl);
 		JScrollPane configPanelScrollPane = new JScrollPane(configPanel);
 
-
 		fileChooser = new FileChooserSideBar(this, configPanel);
 
 		configPanel.add(new JSeparator());
 
 		fbxConvLocationBox = new FileChooserFbxConv(this, S_fbxConvLocation, configPanel);
 
-
 		JPanel flipBase = new JPanel();
 		configPanel.add(flipBase);
 		flipTextureCoords = new BooleanConfigPanel(this, flipBase,
-			getI18nLabel("configPanelFlipTextureCoords"), B_flipVTextureCoords, true) {
+			i18n.get("configPanelFlipTextureCoords"), B_flipVTextureCoords, true) {
 			@Override
 			protected void onChange() {
 				if (fileChooser.isAutomaticPreview())
@@ -214,7 +219,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 		};
 
 		maxVertxPanel = new NumberConfigPanel(this, I_maxVertPerMesh, configPanel,
-			getI18nLabel("configPanelMaxVertices"), 32767, 1, 32767, 1000) {
+			i18n.get("configPanelMaxVertices"), 32767, 1, 32767, 1000) {
 			@Override
 			protected void onChange() {
 				if (fileChooser.isAutomaticPreview())
@@ -222,7 +227,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 			}
 		};
 		maxBonesPanel = new NumberConfigPanel(this, I_maxBonePerNodepart, configPanel,
-			getI18nLabel("configPanelMaxBones"), 12, 1, 50, 1) {
+			i18n.get("configPanelMaxBones"), 12, 1, 50, 1) {
 			@Override
 			protected void onChange() {
 				if (fileChooser.isAutomaticPreview())
@@ -230,7 +235,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 			}
 		};
 		maxBonesWeightsPanel = new NumberConfigPanel(this, I_maxBoneWeightPerVertex, configPanel,
-			getI18nLabel("configPanelMaxBoneWeights"), 4, 1, 50, 1) {
+			i18n.get("configPanelMaxBoneWeights"), 4, 1, 50, 1) {
 			@Override
 			protected void onChange() {
 				if (fileChooser.isAutomaticPreview())
@@ -240,7 +245,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 		JPanel packBase = new JPanel();
 		configPanel.add(packBase);
 		packVertexColors = new BooleanConfigPanel(this, packBase,
-			getI18nLabel("configPanelPackVertexColors"), B_packVertexColorsToOneFloat, false) {
+			i18n.get("configPanelPackVertexColors"), B_packVertexColorsToOneFloat, false) {
 			@Override
 			protected void onChange() {
 				if (fileChooser.isAutomaticPreview())
@@ -249,7 +254,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 		};
 
 		outputFileTypeBox = new ComboStringConfigPanel(this, S_outputFileType, configPanel,
-			getI18nLabel("configPanelOutputFormat"), "G3DB", new String[]{"G3DB", "G3DJ"}) {
+			i18n.get("configPanelOutputFormat"), "G3DB", new String[]{"G3DB", "G3DJ"}) {
 			@Override
 			protected void onChange() {
 				fileChooser.refreshConvertButtonText();
@@ -260,8 +265,6 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 	}
 
 	private JComponent createViewportPanel() {
-
-
 		JPanel viewportSettingsPanel = new JPanel();
 		JScrollPane viewportSettingsPanelScrollPane = new JScrollPane(viewportSettingsPanel);
 
@@ -270,7 +273,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 
 		JPanel baseEnvPanel = new JPanel();
 		viewportSettingsPanel.add(baseEnvPanel);
-		environmentLightingBox = new BooleanConfigPanel(this, baseEnvPanel, getI18nLabel("panelEnvironmentLighting"), B_environmentLighting, true) {
+		environmentLightingBox = new BooleanConfigPanel(this, baseEnvPanel, i18n.get("panelEnvironmentLighting"), B_environmentLighting, true) {
 			@Override
 			protected void onChange() {
 				modelPreviewApp.environmentLightingEnabled = isSelected();
@@ -279,9 +282,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 
 		JPanel baseBackFacePanel = new JPanel();
 		viewportSettingsPanel.add(baseBackFacePanel);
-		backFaceCullingBox = new BooleanConfigPanel(this, baseBackFacePanel, getI18nLabel("panelBackFaceCulling"),
-			B_backFaceCulling,
-			true) {
+		backFaceCullingBox = new BooleanConfigPanel(this, baseBackFacePanel, i18n.get("panelBackFaceCulling"), B_backFaceCulling, true) {
 			@Override
 			protected void onChange() {
 				Gdx.app.postRunnable(new Runnable() {
@@ -294,11 +295,9 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 		};
 		backFaceCullingBox.checkBox.setToolTipText("mat.set(new IntAttribute(IntAttribute.CullFace, 0));");
 
-
 		JPanel baseAlphaBlending = new JPanel();
 		viewportSettingsPanel.add(baseAlphaBlending);
-		alphaBlendingBox = new BooleanConfigPanel(this, baseAlphaBlending, getI18nLabel("panelAlphaBlending"), B_alphaBlending,
-			true) {
+		alphaBlendingBox = new BooleanConfigPanel(this, baseAlphaBlending, i18n.get("panelAlphaBlending"), B_alphaBlending, true) {
 			@Override
 			protected void onChange() {
 				Gdx.app.postRunnable(new Runnable() {
@@ -311,12 +310,9 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 		};
 		alphaBlendingBox.checkBox.setToolTipText("mat.set(new BlendingAttribute(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA));");
 
-
 		JPanel baseAlphaTest = new JPanel();
 		viewportSettingsPanel.add(baseAlphaTest);
-		alphaTestBox = new BooleanIntegerConfigPanel(this, baseAlphaTest, getI18nLabel("panelAlphaTest"),
-			B_alphaTest, false,
-			I_alphaTest, 50, 0, 100, 1) {
+		alphaTestBox = new BooleanIntegerConfigPanel(this, baseAlphaTest, i18n.get("panelAlphaTest"), B_alphaTest, false, I_alphaTest, 50, 0, 100, 1) {
 			@Override
 			protected void onChange() {
 				Gdx.app.postRunnable(new Runnable() {
@@ -332,19 +328,17 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 		};
 		alphaTestBox.checkBox.setToolTipText("mat.set(new FloatAttribute(FloatAttribute.AlphaTest, 0.5f));");
 
-
 		JPanel baseAnimPanel = new JPanel();
 		viewportSettingsPanel.add(baseAnimPanel);
-		baseAnimPanel.add(new JLabel(getI18nLabel("panelAnimation")));
+		baseAnimPanel.add(new JLabel(i18n.get("panelAnimation")));
 		animComboBox = new JComboBox<Animation>();
 		baseAnimPanel.add(animComboBox);
-
 
 		BasicComboBoxRenderer animComboRenderer = new BasicComboBoxRenderer() {
 			@Override
 			public Component getListCellRendererComponent(JList list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
 				if (value == null) {
-					setText(getI18nLabel("panelAnimationComboNone"));
+					setText(i18n.get("panelAnimationComboNone"));
 				} else {
 					Animation anim = (Animation) value;
 					setText(anim.id + "  -  " + anim.duration);
@@ -355,8 +349,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 
 		animComboBox.setRenderer(animComboRenderer);
 
-		animComboBox.addItem(null);
-
+		setAnimList(null);
 
 		animComboBox.addActionListener(new ActionListener() {
 			@Override
@@ -368,7 +361,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 
 		JPanel baseCamPanel = new JPanel();
 		viewportSettingsPanel.add(baseCamPanel);
-		JButton resetCamButton = new JButton(getI18nLabel("panelResetCamera"));
+		JButton resetCamButton = new JButton(i18n.get("panelResetCamera"));
 		baseCamPanel.add(resetCamButton);
 		resetCamButton.addActionListener(new ActionListener() {
 			@Override
@@ -395,21 +388,21 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 	private JComponent createAboutPanel() {
 		JPanel aboutPanel = new JPanel(new BorderLayout());
 		JScrollPane aboutScrollPane = new JScrollPane(aboutPanel);
-		JTextArea aboutTextPane = new JTextArea(getI18nLabel("aboutText"));
+		JTextArea aboutTextPane = new JTextArea(i18n.get("aboutText"));
 		aboutTextPane.setLineWrap(true);
 		aboutTextPane.setWrapStyleWord(true);
 		aboutTextPane.setEditable(false);
 
 		aboutPanel.add(aboutTextPane, BorderLayout.CENTER);
 
-		JButton githubUrlButton = new JButton(getI18nLabel("aboutButtonViewOnGitHub"));
+		JButton githubUrlButton = new JButton(i18n.get("aboutButtonViewOnGitHub"));
 		githubUrlButton.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				try {
-					Desktop.getDesktop().browse(new URI(getI18nLabel("aboutButtonViewOnGitHubUrl")));
+					Desktop.getDesktop().browse(new URI(i18n.get("aboutButtonViewOnGitHubUrl")));
 				} catch (Throwable t) {
-					JOptionPane.showMessageDialog(frame, getI18nLabel("aboutButtonViewOnGitHubError"));
+					JOptionPane.showMessageDialog(frame, i18n.get("aboutButtonViewOnGitHubError"));
 				}
 			}
 		});
@@ -432,100 +425,29 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 		}
 	}
 
-	private void logTextClear() {
-		SwingUtilities.invokeLater(new Runnable() {
-			@Override
-			public void run() {
-				if (outputTextPane == null) {
-					System.out.println();
-				} else{
-					outputTextPane.setText("");
-				}
-			}
-		});
-	}
-
-	private void logTextClear(final String text) {
-		SwingUtilities.invokeLater(new Runnable() {
-			@Override
-			public void run() {
-				if (outputTextPane == null) {
-					System.out.println(text);
-				} else {
-					outputTextPane.setText(text);
-				}
-
-			}
-		});
-	}
-
-	private void logText(final String text) {
-		SwingUtilities.invokeLater(new Runnable() {
-			@Override
-			public void run() {
-				if (outputTextPane == null) {
-					System.out.println(text);
-				} else {
-					outputTextPane.setText(outputTextPane.getText() + "\n" + text);
-				}
-			}
-		});
-	}
-
-	private void logTextError(Exception e) {
-		logTextError(e, null);
-	}
-
-	private void logTextError(Exception e, String hintMessage) {
-		StringWriter sw = new StringWriter();
-		PrintWriter pw = new PrintWriter(sw);
-		e.printStackTrace(pw);
-		if(hintMessage != null) {
-			logTextError(sw.toString() + "\n" + hintMessage);
-		} else {
-			logTextError(sw.toString());
-		}
-	}
-
-	private void logTextError(final String text) {
-		SwingUtilities.invokeLater(new Runnable() {
-			@Override
-			public void run() {
-				if (outputTextPane == null) {
-					System.err.println(text);
-				} else {
-					outputTextPane.setText(outputTextPane.getText() + "\n" + text);
-					mainTabbedPane.setSelectedComponent(outputTextScrollPane);
-				}
-			}
-		});
-	}
-
 	/**
-	 *
 	 * Shows the supplied files in the game window
-	 *
+	 * <p>
 	 * does not update the file chooser. preferred approach here
 	 * is to change the file chooser selection, which will fire an event
 	 * to update the game window.
 	 *
-	 * @param files files to show in the game window
+	 * @param files       files to show in the game window
 	 * @param tempPreview if true, will display file using a temp file location, if false will use a permanent file location (e.g. the conversion function of this program)
 	 */
 	protected void displayFiles(final File[] files, boolean tempPreview) {
-		// TODO: if file contains a directory, handle recursively traveling
-		// TODO: the folder structure here
+		// TODO: if file contains a directory, handle recursively traveling the folder structure here
 		// get3DModelFiles(files)
-		threadPool.submit(new PreviewFilesCallable(files, tempPreview));
+		threadPool.submit(new PreviewFilesCallable(files, tempPreview, previewCallNum++));
 	}
 
 	private List<File> get3DModelFiles(File[] files) {
 		List<File> modelFiles = new ArrayList<File>(files.length);
 
-		for(File f : files) {
-			if(f.isDirectory()) {
+		for (File f : files) {
+			if (f.isDirectory()) {
 				File[] moreFiles = f.listFiles();
-				if(moreFiles != null) {
+				if (moreFiles != null) {
 					modelFiles.addAll(get3DModelFiles(moreFiles));
 				}
 			} else {
@@ -540,10 +462,12 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 
 		private final File[] files;
 		private final boolean tempPreview;
+		private final int callNum;
 
-		private PreviewFilesCallable(File[] files, boolean tempPreview) {
+		private PreviewFilesCallable(File[] files, boolean tempPreview, int callNum) {
 			this.files = files;
 			this.tempPreview = tempPreview;
+			this.callNum = callNum;
 		}
 
 		@Override
@@ -551,24 +475,29 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 			Gdx.app.postRunnable(new Runnable() {
 				@Override
 				public void run() {
-					String loadingLabel = getI18nLabel(tempPreview || files.length == 0 ? "displayFilesLoading": "displayFilesConverting");
+					String loadingLabel = i18n.get(tempPreview || files.length == 0 ? "displayFilesLoading" : "displayFilesConverting");
 					modelPreviewApp.showLoadingText(loadingLabel);
 				}
 			});
 
-			final File[] outputFiles = new File[files.length];
-
-			currentPreviewNum = 0;
-			for (int i = 0; i < files.length; i++) {
-				final File newF = convertFile(files[i], tempPreview, true);
-				outputFiles[i] = newF;
-			}
-
+			final File[] outputFiles = fileConverter.convertFiles(
+				fbxConvLocationBox.getAbsolutePath(),
+				fbxConvLocationBox.getName(),
+				tempPreview || outputFileTypeBox.getValue().equals("G3DJ") ? ".g3dj" : ".g3db",
+				flipTextureCoords.isSelected(),
+				packVertexColors.isSelected(),
+				maxVertxPanel.getValue(), // TODO typo
+				maxBonesPanel.getValue(),
+				maxBonesWeightsPanel.getValue(), // TODO typo
+				files,
+				tempPreview,
+				callNum,
+				true);
 
 			Gdx.app.postRunnable(new Runnable() {
 				@Override
 				public void run() {
-					if(outputFiles.length == 0 ) {
+					if (outputFiles.length == 0) {
 						modelPreviewApp.previewFile(null);
 					} else {
 						for (int i = 0; i < outputFiles.length; i++) {
@@ -580,24 +509,23 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 							} else {
 								try {
 									modelPreviewApp.previewFile(newF); // TODO: need to have a previewFiles()
-								} catch (GdxRuntimeException ex) {
-									// TODO: need to attempt to delete file even though there is an error
-									logTextError("Error while previewing file: " + srcF.getName()); // TODO label
-									logTextError(ex);
+								} catch (Exception ex) {
+									//ex.printStackTrace();
+									logger.logTextError(i18n.get("displayFilesError", srcF.getName()));
+									logger.logTextError(ex);
 									modelPreviewApp.previewFile(null);
 								}
-
 							}
 
 							// only delete newF if it is a temp file that was made in convertFile
 							if (tempPreview && newF != srcF && newF != null && !newF.isDirectory()) {
-								try{
+								try {
 									boolean success = newF.delete();
-									if(!success) {
-										logTextError(getI18nLabel("diplsayFilesUnableToCleanUpPreview"));
+									if (!success) {
+										logger.logTextError(i18n.get("diplsayFilesUnableToCleanUpPreview"));
 									}
 								} catch (Exception ex) {
-									logTextError(ex, getI18nLabel("diplsayFilesUnableToCleanUpPreview"));
+									logger.logTextError(ex, i18n.get("diplsayFilesUnableToCleanUpPreview"));
 								}
 
 							}
@@ -615,139 +543,5 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 			});
 			return null;
 		}
-	}
-
-	private int currentPreviewNum = 0;
-
-	private File convertFile(File f, boolean tempPreview, boolean logDetailedOutput) {
-		if (logDetailedOutput) {
-			if (f != null && !f.isDirectory()) {
-				if (tempPreview)
-					logTextClear("Previewing: " + f.getName());
-				else
-					logTextClear("Converting: " + f.getName());
-			} else {
-				logTextClear();
-			}
-		}
-
-
-		if (f == null || f.isDirectory()) {
-			return null; // not a model file
-		}
-		String srcPath = f.getAbsolutePath();
-		String srcLower = srcPath.toLowerCase();
-		if (srcLower.endsWith(".g3db") || srcLower.endsWith(".g3dj")) {
-			return f; // Already in desirable format, return the same file
-		}
-
-		if (!fbxConvLocationBox.hasValidValue()) {
-			if (logDetailedOutput)
-				logTextError("Can not convert file, fbx-conv location is not yet configured.");
-			return null;
-		}
-
-		File targetDir = f.getParentFile();
-		String dstExtension = tempPreview || outputFileTypeBox.getValue().equals("G3DJ") ? ".g3dj" : ".g3db";
-		String dstPath;
-
-		if (tempPreview) {
-			dstPath = targetDir + fbxConvLocationBox.dirSeperator + "libgdx-model-viewer." + currentPreviewNum + ".temp" + dstExtension;
-			currentPreviewNum++;
-		} else {
-			dstPath = targetDir + fbxConvLocationBox.dirSeperator + stripExtension(f.getName()) + dstExtension;
-		}
-		File convertedFile = new File(dstPath);
-		try {
-
-			if (logDetailedOutput) {
-				//logText("-----------------------------------");
-			}
-
-			ProcessBuilder p = new ProcessBuilder(fbxConvLocationBox.getAbsolutePath(), "-v");
-			if (flipTextureCoords.isSelected())
-				p.command().add("-f");
-			if (packVertexColors.isSelected())
-				p.command().add("-p");
-			p.command().add("-m");
-			p.command().add(maxVertxPanel.getString());
-			p.command().add("-b");
-			p.command().add(maxBonesPanel.getString());
-			p.command().add("-w");
-			p.command().add(maxBonesWeightsPanel.getString());
-			p.command().add(srcPath);
-			p.command().add(dstPath);
-			if (logDetailedOutput) {
-				logText("\n" + shortenCommand(p.command(), fbxConvLocationBox.getName(), f.getName(), convertedFile.getName()) + "\n");
-			}
-
-			String output = processOutput(p.start());
-			if (logDetailedOutput) {
-				logText(output);
-			}
-
-		} catch (IOException e) {
-			boolean possibleBadInstallation;
-			try {
-				Process proc = Runtime.getRuntime().exec(fbxConvLocationBox.getAbsolutePath(), null, null);
-				String output = processOutput(proc);
-				possibleBadInstallation = !output.contains("fbx-conv");
-			} catch (IOException ex) {
-				possibleBadInstallation = true;
-			}
-			if (possibleBadInstallation) {
-				logTextError(e, getI18nLabel("displayFilePossibleBadFbxConvInstallation"));
-			} else {
-				logTextError(e);
-			}
-			return null;
-		}
-
-		return convertedFile;
-	}
-
-	protected static String stripExtension(String str) {
-		if (str == null) return null;
-		int pos = str.lastIndexOf(".");
-		if (pos == -1) return str;
-		return str.substring(0, pos);
-	}
-
-	private static String shortenCommand(List<String> command, String shortExecName, String shortSrcName, String shortDstName) {
-		StringBuilder output = new StringBuilder(shortExecName + " ");
-		for (int i = 1; i < command.size() - 2; i++) {
-			output.append(command.get(i)).append(" ");
-		}
-
-		return output.append(" ").append(shortSrcName).append(" ").append(shortDstName).toString();
-	}
-
-	private static String stringArrayToString(String[] stringArray) {
-		if (stringArray == null || stringArray.length == 0)
-			return "";
-		StringBuilder output = new StringBuilder();
-		for (String s : stringArray) {
-			if (s == null || s.isEmpty()) {
-				continue;
-			}
-			output.append(s).append(" ");
-		}
-
-		return output.substring(0, output.length() - 1);
-	}
-
-	private String processOutput(Process proc) throws java.io.IOException {
-		java.io.InputStream is = proc.getInputStream();
-		java.util.Scanner s = new java.util.Scanner(is).useDelimiter("\\A");
-		String val = "";
-		if (s.hasNext()) {
-			val = s.next();
-			if(s.hasNext()) {
-				logTextError("theres stil more! ");
-			}
-		} else {
-			val = "";
-		}
-		return val;
 	}
 }
