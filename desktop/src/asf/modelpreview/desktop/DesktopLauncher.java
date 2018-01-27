@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.ResourceBundle;
@@ -38,6 +39,9 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 		});
 	}
 
+	private static final String keyPreferences = "LibGDXModelPreviewUtility";
+	private static final String keyI18n = "Labels";
+
 	public final Preferences prefs;
 	private final ExecutorService threadPool;
 	private final ResourceBundle i18n;
@@ -55,7 +59,6 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 	private JScrollPane outputTextScrollPane;
 	private JTextPane outputTextPane;
 	private ModelPreviewApp modelPreviewApp;
-
 
 	protected static final String S_folderLocation = "S_folderLocation";
 	protected static final String I_fileFilter = "I_fileFilter";
@@ -104,7 +107,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 
 	private ResourceBundle createI18N() {
 		Locale currentLocale = new Locale("en");
-		return ResourceBundle.getBundle("Labels", currentLocale);
+		return ResourceBundle.getBundle(keyI18n, currentLocale);
 	}
 
 	private String getI18nLabel(String key) {
@@ -112,7 +115,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 	}
 
 	private DesktopLauncher() {
-		prefs = Preferences.userRoot().node("LibGDXModelPreviewUtility");
+		prefs = Preferences.userRoot().node(keyPreferences);
 		i18n = createI18N();
 		threadPool = createThreadPool();
 		initAppearance();
@@ -122,10 +125,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 		TransferHandler handler = new TransferHandler() {
 			@Override
 			public boolean canImport(TransferSupport support) {
-				if (!support.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
-					return false;
-				}
-				return true;
+				return support.isDataFlavorSupported(DataFlavor.javaFileListFlavor);
 			}
 
 			@Override
@@ -146,7 +146,6 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 					filesToSelect[i] = data.get(i);
 				}
 				fileChooser.setSelectedFile(filesToSelect);
-				//convertFilesAsBatch(data);
 				return true;
 			}
 
@@ -401,9 +400,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 		aboutTextPane.setWrapStyleWord(true);
 		aboutTextPane.setEditable(false);
 
-
 		aboutPanel.add(aboutTextPane, BorderLayout.CENTER);
-
 
 		JButton githubUrlButton = new JButton(getI18nLabel("aboutButtonViewOnGitHub"));
 		githubUrlButton.addActionListener(new ActionListener() {
@@ -420,17 +417,20 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 		return aboutScrollPane;
 	}
 
+	/**
+	 * Sets the list of possible animations to be selected for the viewport
+	 *
+	 * @param animations list of possible animations, null if 3d model does not have any animations.
+	 */
 	public void setAnimList(Array<Animation> animations) {
 		animComboBox.removeAllItems();
 		animComboBox.addItem(null);
-		if (animations == null)
-			return;
-
-		for (Animation animName : animations) {
-			animComboBox.addItem(animName);
+		if (animations != null) {
+			for (Animation animName : animations) {
+				animComboBox.addItem(animName);
+			}
 		}
 	}
-
 
 	private void logTextClear() {
 		SwingUtilities.invokeLater(new Runnable() {
@@ -438,9 +438,9 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 			public void run() {
 				if (outputTextPane == null) {
 					System.out.println();
-					return;
+				} else{
+					outputTextPane.setText("");
 				}
-				outputTextPane.setText("");
 			}
 		});
 	}
@@ -451,9 +451,10 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 			public void run() {
 				if (outputTextPane == null) {
 					System.out.println(text);
-					return;
+				} else {
+					outputTextPane.setText(text);
 				}
-				outputTextPane.setText(text);
+
 			}
 		});
 	}
@@ -464,27 +465,26 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 			public void run() {
 				if (outputTextPane == null) {
 					System.out.println(text);
-					return;
+				} else {
+					outputTextPane.setText(outputTextPane.getText() + "\n" + text);
 				}
-				outputTextPane.setText(outputTextPane.getText() + "\n" + text);
 			}
 		});
 	}
 
 	private void logTextError(Exception e) {
-
-		StringWriter sw = new StringWriter();
-		PrintWriter pw = new PrintWriter(sw);
-		e.printStackTrace(pw);
-		logTextError(sw.toString());
+		logTextError(e, null);
 	}
 
 	private void logTextError(Exception e, String hintMessage) {
-
 		StringWriter sw = new StringWriter();
 		PrintWriter pw = new PrintWriter(sw);
 		e.printStackTrace(pw);
-		logTextError(sw.toString() + "\n" + hintMessage);
+		if(hintMessage != null) {
+			logTextError(sw.toString() + "\n" + hintMessage);
+		} else {
+			logTextError(sw.toString());
+		}
 	}
 
 	private void logTextError(final String text) {
@@ -493,91 +493,12 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 			public void run() {
 				if (outputTextPane == null) {
 					System.err.println(text);
-					return;
+				} else {
+					outputTextPane.setText(outputTextPane.getText() + "\n" + text);
+					mainTabbedPane.setSelectedComponent(outputTextScrollPane);
 				}
-				outputTextPane.setText(outputTextPane.getText() + "\n" + text);
-				mainTabbedPane.setSelectedComponent(outputTextScrollPane);
 			}
 		});
-	}
-
-	/**
-	 * @param files
-	 * @deprecated batch conversions are done by clicking the convert button in the file chooser now.
-	 */
-	private void convertFilesAsBatch(final List<File> files) {
-		if (files.size() == 1 && !files.get(0).isDirectory()) {
-			// a single non directory file was chosen, lets just select it
-			File[] fs = new File[1];
-			fs[0] = files.get(0);
-			fileChooser.setSelectedFile(fs);
-			return;
-		}
-
-		String[] options = new String[]{".fbx", ".obj", ".dae"};
-		String dstExtension = outputFileTypeBox.getValue().equals("G3DJ") ? ".g3dj" : ".g3db";
-		String msgAddition = files.size() == 1 && files.get(0).isDirectory() ? " in " + files.get(0).getName() : "";
-		final String srcExtension = (String) JOptionPane.showInputDialog(
-			frame,
-			"Convert all files" + msgAddition + " to " + dstExtension + " that have the following extension:\n\n WARNING: this will start converting your files and cannot be undone!",
-			"Batch model conversion",
-			JOptionPane.QUESTION_MESSAGE,
-			null,
-			options,
-			prefs.get(S_batchConvertFileType, ".fbx"));
-
-
-		if (srcExtension == null) {
-			return;
-		}
-
-		prefs.put(S_batchConvertFileType, srcExtension);
-
-		mainTabbedPane.setSelectedComponent(outputTextScrollPane);
-
-
-		threadPool.submit(new ConvertMultipleFilesCallable(files, srcExtension, dstExtension));
-
-	}
-
-	private class ConvertMultipleFilesCallable implements Callable<Void> {
-		final List<File> files;
-		final String srcExtension;
-		final String dstExtension;
-
-		public ConvertMultipleFilesCallable(List<File> files, String srcExtension, String dstExtension) {
-			this.files = files;
-			this.srcExtension = srcExtension;
-			this.dstExtension = dstExtension;
-		}
-
-		@Override
-		public Void call() throws Exception {
-			logTextClear("Batch Convert: " + srcExtension + " -> " + dstExtension);
-			for (File file : files) {
-				convertFileRecursive(file, srcExtension);
-			}
-			return null;
-		}
-	}
-
-	private void convertFileRecursive(File f, String srcExtension) {
-
-		if (f.isDirectory()) {
-			File[] files = f.listFiles();
-			for (File file : files) {
-				convertFileRecursive(file, srcExtension);
-			}
-		} else {
-			if (f.getName().toLowerCase().endsWith(srcExtension)) {
-				File outputFile = convertFile(f, false, false);
-				if (outputFile != null && outputFile != f) {
-					logText(f.getAbsolutePath() + "--> " + outputFile.getName());
-				} else {
-					logTextError(f.getAbsolutePath() + "--> Error, could not convert!");
-				}
-			}
-		}
 	}
 
 	/**
@@ -592,13 +513,27 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 	 * @param tempPreview if true, will display file using a temp file location, if false will use a permanent file location (e.g. the conversion function of this program)
 	 */
 	protected void displayFiles(final File[] files, boolean tempPreview) {
+		// TODO: if file contains a directory, handle recursively traveling
+		// TODO: the folder structure here
+		// get3DModelFiles(files)
 		threadPool.submit(new PreviewFilesCallable(files, tempPreview));
 	}
 
+	private List<File> get3DModelFiles(File[] files) {
+		List<File> modelFiles = new ArrayList<File>(files.length);
 
-	@Deprecated
-	protected void displayFile(final File f, final boolean tempPreview) {
-		threadPool.submit(new PreviewFileCallable(f, tempPreview));
+		for(File f : files) {
+			if(f.isDirectory()) {
+				File[] moreFiles = f.listFiles();
+				if(moreFiles != null) {
+					modelFiles.addAll(get3DModelFiles(moreFiles));
+				}
+			} else {
+				modelFiles.add(f);
+			}
+		}
+
+		return modelFiles;
 	}
 
 	private class PreviewFilesCallable implements Callable<Void> {
@@ -606,7 +541,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 		private final File[] files;
 		private final boolean tempPreview;
 
-		public PreviewFilesCallable(File[] files, boolean tempPreview) {
+		private PreviewFilesCallable(File[] files, boolean tempPreview) {
 			this.files = files;
 			this.tempPreview = tempPreview;
 		}
@@ -616,10 +551,10 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 			Gdx.app.postRunnable(new Runnable() {
 				@Override
 				public void run() {
-					modelPreviewApp.showLoadingText("Loading...");
+					String loadingLabel = getI18nLabel(tempPreview || files.length == 0 ? "displayFilesLoading": "displayFilesConverting");
+					modelPreviewApp.showLoadingText(loadingLabel);
 				}
 			});
-
 
 			final File[] outputFiles = new File[files.length];
 
@@ -629,32 +564,47 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 				outputFiles[i] = newF;
 			}
 
+
 			Gdx.app.postRunnable(new Runnable() {
 				@Override
 				public void run() {
-					for (int i = 0; i < outputFiles.length; i++) {
-						File srcF = files[i];
-						File newF = outputFiles[i];
+					if(outputFiles.length == 0 ) {
+						modelPreviewApp.previewFile(null);
+					} else {
+						for (int i = 0; i < outputFiles.length; i++) {
+							File srcF = files[i];
+							File newF = outputFiles[i];
 
-						if (newF == null || newF.isDirectory()) {
-							modelPreviewApp.previewFile(null);
-						} else {
-							try {
-								modelPreviewApp.previewFile(newF);
-							} catch (GdxRuntimeException ex) {
-								logTextError("Error while previewing file: " + srcF.getName());
-								logTextError(ex);
+							if (newF == null || newF.isDirectory()) {
 								modelPreviewApp.previewFile(null);
+							} else {
+								try {
+									modelPreviewApp.previewFile(newF); // TODO: need to have a previewFiles()
+								} catch (GdxRuntimeException ex) {
+									// TODO: need to attempt to delete file even though there is an error
+									logTextError("Error while previewing file: " + srcF.getName()); // TODO label
+									logTextError(ex);
+									modelPreviewApp.previewFile(null);
+								}
+
+							}
+
+							// only delete newF if it is a temp file that was made in convertFile
+							if (tempPreview && newF != srcF && newF != null && !newF.isDirectory()) {
+								try{
+									boolean success = newF.delete();
+									if(!success) {
+										logTextError(getI18nLabel("diplsayFilesUnableToCleanUpPreview"));
+									}
+								} catch (Exception ex) {
+									logTextError(ex, getI18nLabel("diplsayFilesUnableToCleanUpPreview"));
+								}
+
 							}
 
 						}
-
-						// only delete newF if it is a temp file that was made in convertFile
-						if (tempPreview && newF != srcF && newF != null && !newF.isDirectory()) {
-							newF.delete();
-						}
-
 					}
+
 					SwingUtilities.invokeLater(new Runnable() {
 						@Override
 						public void run() {
@@ -666,67 +616,6 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 			return null;
 		}
 	}
-
-	@Deprecated
-	private class PreviewFileCallable implements Callable<Void> {
-
-		private final File f;
-		private final boolean tempPreview;
-
-		public PreviewFileCallable(File f, boolean tempPreview) {
-			this.f = f;
-			this.tempPreview = tempPreview;
-		}
-
-		@Override
-		public Void call() throws Exception {
-			Gdx.app.postRunnable(new Runnable() {
-				@Override
-				public void run() {
-					if (tempPreview || f == null)
-						modelPreviewApp.showLoadingText("Loading...");
-					else
-						modelPreviewApp.showLoadingText("Converting\n" + f.getName());
-				}
-			});
-
-
-			currentPreviewNum = 0;
-			final File newF = convertFile(f, tempPreview, true);
-
-			Gdx.app.postRunnable(new Runnable() {
-				@Override
-				public void run() {
-					if (newF == null || newF.isDirectory()) {
-						modelPreviewApp.previewFile(null);
-					} else {
-						try {
-							modelPreviewApp.previewFile(newF);
-						} catch (GdxRuntimeException ex) {
-							logTextError("Error while previewing file: " + f.getName());
-							logTextError(ex);
-							modelPreviewApp.previewFile(null);
-						}
-
-					}
-
-					if (tempPreview && newF != f && newF != null && !newF.isDirectory()) { // only delete newF if it is a temp file that was made in convertFile
-						newF.delete();
-					}
-
-					SwingUtilities.invokeLater(new Runnable() {
-						@Override
-						public void run() {
-							fileChooser.refreshFileChooserList();
-						}
-					});
-				}
-			});
-
-			return null;
-		}
-	}
-
 
 	private int currentPreviewNum = 0;
 
@@ -801,13 +690,13 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 			boolean possibleBadInstallation;
 			try {
 				Process proc = Runtime.getRuntime().exec(fbxConvLocationBox.getAbsolutePath(), null, null);
-				String output = DesktopLauncher.processOutput(proc);
+				String output = processOutput(proc);
 				possibleBadInstallation = !output.contains("fbx-conv");
 			} catch (IOException ex) {
 				possibleBadInstallation = true;
 			}
 			if (possibleBadInstallation) {
-				logTextError(e, "It's possible you either selected the wrong executable file, or you don't have fbx-conv installed correctly.\nIf you're on mac or linux be sure that libfbxsdk.dylib and libfbxsdk.so are in /usr/lib");
+				logTextError(e, getI18nLabel("displayFilePossibleBadFbxConvInstallation"));
 			} else {
 				logTextError(e);
 			}
@@ -825,32 +714,37 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 	}
 
 	private static String shortenCommand(List<String> command, String shortExecName, String shortSrcName, String shortDstName) {
-		String output = shortExecName + " ";
+		StringBuilder output = new StringBuilder(shortExecName + " ");
 		for (int i = 1; i < command.size() - 2; i++) {
-			output += command.get(i) + " ";
+			output.append(command.get(i)).append(" ");
 		}
-		return output + " " + shortSrcName + " " + shortDstName;
+
+		return output.append(" ").append(shortSrcName).append(" ").append(shortDstName).toString();
 	}
 
 	private static String stringArrayToString(String[] stringArray) {
 		if (stringArray == null || stringArray.length == 0)
 			return "";
-		String output = "";
+		StringBuilder output = new StringBuilder();
 		for (String s : stringArray) {
 			if (s == null || s.isEmpty()) {
 				continue;
 			}
-			output += s + " ";
+			output.append(s).append(" ");
 		}
+
 		return output.substring(0, output.length() - 1);
 	}
 
-	protected static String processOutput(Process proc) throws java.io.IOException {
+	private String processOutput(Process proc) throws java.io.IOException {
 		java.io.InputStream is = proc.getInputStream();
 		java.util.Scanner s = new java.util.Scanner(is).useDelimiter("\\A");
 		String val = "";
 		if (s.hasNext()) {
 			val = s.next();
+			if(s.hasNext()) {
+				logTextError("theres stil more! ");
+			}
 		} else {
 			val = "";
 		}

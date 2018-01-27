@@ -144,6 +144,7 @@ public class ModelPreviewApp extends ApplicationAdapter {
                         if (absolutePath.toLowerCase().endsWith("obj")) {
                                 model = objLoader.loadModel(Gdx.files.absolute(absolutePath));
                         } else if (absolutePath.toLowerCase().endsWith("g3dj")) {
+                                // TODO: if i mass scroll through many previews. i get an exceptionj here. i think because i of multi threading error and deleting the preview file..
                                 model = g3djModelLoader.loadModel(Gdx.files.absolute(absolutePath));
                         } else {
                                 model = g3dbModelLoader.loadModel(Gdx.files.absolute(absolutePath));
