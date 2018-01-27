@@ -49,7 +49,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 	protected JTabbedPane mainTabbedPane;
 	private FileChooserFbxConv fbxConvLocationBox;
 	private BooleanConfigPanel flipTextureCoords, packVertexColors;
-	private NumberConfigPanel maxVertxPanel, maxBonesPanel, maxBonesWeightsPanel;
+	private NumberConfigPanel maxVertexPanel, maxBonesPanel, maxBoneWeightsPanel;
 	protected ComboStringConfigPanel inputFileTypeBox, outputFileTypeBox;
 	private BooleanConfigPanel environmentLightingBox, backFaceCullingBox, alphaBlendingBox;
 	private BooleanIntegerConfigPanel alphaTestBox;
@@ -218,7 +218,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 			}
 		};
 
-		maxVertxPanel = new NumberConfigPanel(this, I_maxVertPerMesh, configPanel,
+		maxVertexPanel = new NumberConfigPanel(this, I_maxVertPerMesh, configPanel,
 			i18n.get("configPanelMaxVertices"), 32767, 1, 32767, 1000) {
 			@Override
 			protected void onChange() {
@@ -234,7 +234,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 					fileChooser.displaySelectedFiles(true);
 			}
 		};
-		maxBonesWeightsPanel = new NumberConfigPanel(this, I_maxBoneWeightPerVertex, configPanel,
+		maxBoneWeightsPanel = new NumberConfigPanel(this, I_maxBoneWeightPerVertex, configPanel,
 			i18n.get("configPanelMaxBoneWeights"), 4, 1, 50, 1) {
 			@Override
 			protected void onChange() {
@@ -438,6 +438,7 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 	protected void displayFiles(final File[] files, boolean tempPreview) {
 		// TODO: if file contains a directory, handle recursively traveling the folder structure here
 		// get3DModelFiles(files)
+		// TODO: in additonal to a callNum, may want a sessionId or something in case the application is opened twice
 		threadPool.submit(new PreviewFilesCallable(files, tempPreview, previewCallNum++));
 	}
 
@@ -486,9 +487,9 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 				tempPreview || outputFileTypeBox.getValue().equals("G3DJ") ? ".g3dj" : ".g3db",
 				flipTextureCoords.isSelected(),
 				packVertexColors.isSelected(),
-				maxVertxPanel.getValue(), // TODO typo
+				maxVertexPanel.getValue(),
 				maxBonesPanel.getValue(),
-				maxBonesWeightsPanel.getValue(), // TODO typo
+				maxBoneWeightsPanel.getValue(),
 				files,
 				tempPreview,
 				callNum,
@@ -497,41 +498,16 @@ public class DesktopLauncher implements ModelPreviewApp.DesktopAppResolver {
 			Gdx.app.postRunnable(new Runnable() {
 				@Override
 				public void run() {
-					if (outputFiles.length == 0) {
+					try{
+						modelPreviewApp.previewFiles(outputFiles);
+					} catch (Exception ex) {
+						//ex.printStackTrace();
+						logger.logTextError(i18n.get("displayFilesError", String.valueOf(outputFiles))); // TODO: srcF.getName()
+						logger.logTextError(ex);
 						modelPreviewApp.previewFile(null);
-					} else {
-						for (int i = 0; i < outputFiles.length; i++) {
-							File srcF = files[i];
-							File newF = outputFiles[i];
-
-							if (newF == null || newF.isDirectory()) {
-								modelPreviewApp.previewFile(null);
-							} else {
-								try {
-									modelPreviewApp.previewFile(newF); // TODO: need to have a previewFiles()
-								} catch (Exception ex) {
-									//ex.printStackTrace();
-									logger.logTextError(i18n.get("displayFilesError", srcF.getName()));
-									logger.logTextError(ex);
-									modelPreviewApp.previewFile(null);
-								}
-							}
-
-							// only delete newF if it is a temp file that was made in convertFile
-							if (tempPreview && newF != srcF && newF != null && !newF.isDirectory()) {
-								try {
-									boolean success = newF.delete();
-									if (!success) {
-										logger.logTextError(i18n.get("diplsayFilesUnableToCleanUpPreview"));
-									}
-								} catch (Exception ex) {
-									logger.logTextError(ex, i18n.get("diplsayFilesUnableToCleanUpPreview"));
-								}
-
-							}
-
-						}
 					}
+
+					fileConverter.deleteTemporaryOutputFiles(files, outputFiles, tempPreview);
 
 					SwingUtilities.invokeLater(new Runnable() {
 						@Override

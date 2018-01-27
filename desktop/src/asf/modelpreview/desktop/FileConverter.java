@@ -33,6 +33,29 @@ public class FileConverter {
 		return absoluteFbxConvLocation != null;
 	}
 
+	public void deleteTemporaryOutputFiles(File[] inputFiles, File[] outputFiles, boolean tempPreview) {
+		if(outputFiles != null && tempPreview) {
+			for (int i = 0; i < outputFiles.length; i++) {
+				File srcF = inputFiles[i];
+				File newF = outputFiles[i];
+
+				// only delete newF if it is a temp file that was made in convertFile
+				if (newF != srcF && newF != null && !newF.isDirectory()) {
+					try {
+						boolean success = newF.delete();
+						if (!success) {
+							logger.logTextError(i18n.get("diplsayFilesUnableToCleanUpPreview"));
+						}
+					} catch (Exception ex) {
+						logger.logTextError(ex, i18n.get("diplsayFilesUnableToCleanUpPreview"));
+					}
+
+				}
+
+			}
+		}
+	}
+
 	public File[] convertFiles(String absoluteFbxConvLocation,
 							   String absoluteFbxConvLocationName,
 							   String dstExtension,
@@ -42,6 +65,7 @@ public class FileConverter {
 							   int maxBones,
 							   int maxBoneWeights,
 							   File[] files, boolean tempPreview, int callNum, boolean logDetailedOutput) {
+		if(files == null) return null;
 		final File[] outputFiles = new File[files.length];
 
 		for (int i = 0; i < files.length; i++) {
@@ -89,7 +113,7 @@ public class FileConverter {
 
 		if(!isFbxConvLocationValid(absoluteFbxConvLocation)){
 			if (logDetailedOutput)
-				logger.logTextError("Can not convert file, fbx-conv location is not yet configured.");
+				logger.logTextError(i18n.get("displayFileErrorFbxConvNotConfigured"));
 			return null;
 		}
 

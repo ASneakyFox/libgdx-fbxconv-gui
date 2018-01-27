@@ -17,20 +17,15 @@ import com.badlogic.gdx.graphics.g3d.Environment;
 import com.badlogic.gdx.graphics.g3d.Material;
 import com.badlogic.gdx.graphics.g3d.Model;
 import com.badlogic.gdx.graphics.g3d.ModelBatch;
-import com.badlogic.gdx.graphics.g3d.ModelInstance;
-import com.badlogic.gdx.graphics.g3d.attributes.BlendingAttribute;
 import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute;
-import com.badlogic.gdx.graphics.g3d.attributes.FloatAttribute;
-import com.badlogic.gdx.graphics.g3d.attributes.IntAttribute;
 import com.badlogic.gdx.graphics.g3d.environment.DirectionalLight;
 import com.badlogic.gdx.graphics.g3d.loader.G3dModelLoader;
 import com.badlogic.gdx.graphics.g3d.loader.ObjLoader;
 import com.badlogic.gdx.graphics.g3d.model.Animation;
-import com.badlogic.gdx.graphics.g3d.utils.AnimationController;
 import com.badlogic.gdx.graphics.g3d.utils.CameraInputController;
 import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder;
+import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector3;
-import com.badlogic.gdx.math.collision.BoundingBox;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Container;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
@@ -48,11 +43,12 @@ public class ModelPreviewApp extends ApplicationAdapter {
 	public volatile boolean environmentLightingEnabled = true;
 	public final Color backgroundColor = new Color(100 / 255f, 149 / 255f, 237 / 255f, 1f);
 
-	private ModelBatch modelBatch;
+	protected ModelBatch modelBatch;
 
-	private Model model;
-	private ModelInstance modelInstance;
-	private AnimationController animController;
+	private Array<Spatial> spatials = new Array<Spatial>(true, 16, Spatial.class);
+	//	private Model model;
+//	private ModelInstance modelInstance;
+//	private AnimationController animController;
 	private boolean backFaceCulling = true;
 	private boolean alphaBlending = false;
 	private float alphaTest = -1;
@@ -71,47 +67,22 @@ public class ModelPreviewApp extends ApplicationAdapter {
 
 	public void setBackFaceCulling(boolean backFaceCullinEnabled) {
 		backFaceCulling = backFaceCullinEnabled;
-
-		if (modelInstance != null) {
-			if (backFaceCulling) {
-				for (Material mat : modelInstance.materials) {
-					mat.remove(IntAttribute.CullFace);
-				}
-			} else {
-				for (Material mat : modelInstance.materials) {
-					mat.set(new IntAttribute(IntAttribute.CullFace, 0));
-				}
-			}
+		for (Spatial s : spatials) {
+			s.setBackFaceCulling(backFaceCulling);
 		}
 	}
 
 	public void setAlphaBlending(boolean alphaBlendingEnabled) {
 		alphaBlending = alphaBlendingEnabled;
-		if (modelInstance != null) {
-			if (alphaBlending) {
-				for (Material mat : modelInstance.materials) {
-					mat.set(new BlendingAttribute(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA));
-				}
-			} else {
-				for (Material mat : modelInstance.materials) {
-					mat.remove(BlendingAttribute.Type);
-				}
-			}
+		for (Spatial s : spatials) {
+			s.setBackFaceCulling(alphaBlending);
 		}
 	}
 
 	public void setAlphaTest(float alphaTestValue) {
 		alphaTest = alphaTestValue;
-		if (modelInstance != null) {
-			if (alphaTest >= 0) {
-				for (Material mat : modelInstance.materials) {
-					mat.set(new FloatAttribute(FloatAttribute.AlphaTest, alphaTest));
-				}
-			} else {
-				for (Material mat : modelInstance.materials) {
-					mat.remove(FloatAttribute.AlphaTest);
-				}
-			}
+		for (Spatial s : spatials) {
+			s.setAlphaTest(alphaTest);
 		}
 	}
 
@@ -125,34 +96,90 @@ public class ModelPreviewApp extends ApplicationAdapter {
 		setBackgroundColor(100 / 255f, 149 / 255f, 237 / 255f);
 	}
 
-	public void previewFile(File f) throws GdxRuntimeException{
-		if (model != null) {
-			model.dispose();
-			model = null;
-			animController = null;
+	public void previewFile(File f) {
+		previewFiles(new File[]{f});
+	}
+
+	public void previewFiles(File[] files) {
+
+		for (Spatial s : spatials) {
+			s.dispose();
+		}
+		spatials.clear();
+
+		if (files == null || files.length == 0) {
+			files = new File[]{null};
 		}
 
+		for (File f : files) {
+			if (f != null && f.isDirectory()) {
+				throw new IllegalArgumentException("provided files must not contain directories");
+			}
+			Spatial s = new Spatial();
+			s.model = loadModel(f);
+			spatials.add(s);
+			s.init();
+		}
+
+		setSpatialLocations();
+
+		Spatial s0 = spatials.get(0); // TODO: consistent scaling for all models
+		if (infoLabel != null) {
+			if (s0.scalingFactor == 1) {
+				infoLabel.setText("");
+			} else {
+				infoLabel.setText("Scaled to: " + (s0.scalingFactor * 100f) + "%");
+			}
+		}
+
+		desktopLauncher.setAnimList(s0.model.animations);
+
+		//resetCam();
+		if (label != null)
+			label.setText("");
+	}
+
+	private void setSpatialLocations() {
+		int numColumns = MathUtils.ceil((float)Math.sqrt(spatials.size));
+
+		Vector3 locationOffset = new Vector3();
+		int currentColumn = 0;
+		float largestZ = 0;
+
+		for (Spatial s : spatials) {
+			s.setLocation(locationOffset);
+			if(currentColumn < numColumns) {
+				locationOffset.x += s.dimensions.x * 1.05;
+				currentColumn++;
+				largestZ = s.dimensions.z > largestZ ? s.dimensions.z : largestZ;
+			} else {
+				locationOffset.x = 0;
+				locationOffset.z += largestZ;
+				currentColumn = 0;
+				largestZ = 0;
+			}
+		}
+
+
+	}
+
+	private Model loadModel(File f) {
 		if (f == null) {
 			ModelBuilder modelBuilder = new ModelBuilder();
-			model = modelBuilder.createBox(5f, 5f, 5f,
+			return modelBuilder.createBox(5f, 5f, 5f,
 				new Material(ColorAttribute.createDiffuse(Color.GREEN)),
 				VertexAttributes.Usage.Position | VertexAttributes.Usage.Normal);
 		} else {
 			String absolutePath = f.getAbsolutePath();
 
 			if (absolutePath.toLowerCase().endsWith("obj")) {
-				model = objLoader.loadModel(Gdx.files.absolute(absolutePath));
+				return objLoader.loadModel(Gdx.files.absolute(absolutePath));
 			} else if (absolutePath.toLowerCase().endsWith("g3dj")) {
-				model = g3djModelLoader.loadModel(Gdx.files.absolute(absolutePath));
+				return g3djModelLoader.loadModel(Gdx.files.absolute(absolutePath));
 			} else {
-				model = g3dbModelLoader.loadModel(Gdx.files.absolute(absolutePath));
+				return g3dbModelLoader.loadModel(Gdx.files.absolute(absolutePath));
 			}
-
-
 		}
-
-
-		onModelLoaded(model);
 	}
 
 	public void showLoadingText(String text) {
@@ -160,7 +187,6 @@ public class ModelPreviewApp extends ApplicationAdapter {
 			label.setText(text);
 
 	}
-
 
 	@Override
 	public void create() {
@@ -187,11 +213,7 @@ public class ModelPreviewApp extends ApplicationAdapter {
 		assetManager.load("loadingFont.ttf", BitmapFont.class, fontParameter);
 
 
-		try {
-			previewFile(null);
-		} catch (GdxRuntimeException e) {
-			e.printStackTrace();
-		}
+		previewFiles(new File[]{null, null});
 
 
 		environment = new Environment();
@@ -204,6 +226,7 @@ public class ModelPreviewApp extends ApplicationAdapter {
 
 	@Override
 	public void render() {
+		final float delta = Gdx.graphics.getDeltaTime();
 		if (assetManager.update()) {
 			if (stage == null && assetManager.isLoaded("loadingFont.ttf")) {
 				onFontLoaded(assetManager.get("loadingFont.ttf", BitmapFont.class));
@@ -214,73 +237,25 @@ public class ModelPreviewApp extends ApplicationAdapter {
 
 		Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT);
 
-		if (modelInstance != null) {
-			if (animController != null) {
-				animController.update(Gdx.graphics.getDeltaTime());
-			}
-			modelBatch.begin(cam);
-			modelBatch.render(modelInstance, environmentLightingEnabled ? environment : null);
-			modelBatch.end();
+		modelBatch.begin(cam);
+
+		for (Spatial s : spatials) {
+			s.render(delta, this);
 		}
 
-		if (stage != null)
+		modelBatch.end();
+
+		if (stage != null) {
 			stage.draw();
-
-
+		}
 	}
 
 	public void setAnimation(Animation selectedItem) {
-		if (animController == null)
-			return;
-
-		if (selectedItem == null) {
-			animController.setAnimation(null, -1);
-		} else {
-			animController.setAnimation(selectedItem.id, -1);
+		if (spatials.size > 0) {
+			Spatial s = spatials.get(0);
+			s.setAnimation(selectedItem);
 		}
-
-
 	}
-
-	private void onModelLoaded(Model model) {
-		this.model = model;
-		modelInstance = new ModelInstance(model);
-
-		Vector3 dimensions = modelInstance.calculateBoundingBox(new BoundingBox()).getDimensions(new Vector3());
-		float largest = dimensions.x;
-		if (dimensions.y > largest) largest = dimensions.y;
-		if (dimensions.z > largest) largest = dimensions.z;
-		if (largest > 25) {
-			float s = 25f / largest;
-			modelInstance.transform.setToScaling(s, s, s);
-			if (infoLabel != null)
-				infoLabel.setText("Scaled to: " + (s * 100f) + "%");
-		} else if (largest < 0.1f) {
-			float s = 5 / largest;
-			modelInstance.transform.setToScaling(s, s, s);
-			if (infoLabel != null)
-				infoLabel.setText("Scaled to: " + (s * 100f) + "%");
-		} else {
-			if (infoLabel != null)
-				infoLabel.setText("");
-		}
-
-		setBackFaceCulling(backFaceCulling);
-		setAlphaBlending(alphaBlending);
-		setAlphaTest(alphaTest);
-
-		if (model.animations.size > 0) {
-			animController = new AnimationController(modelInstance);
-			desktopLauncher.setAnimList(model.animations);
-		} else {
-			desktopLauncher.setAnimList(null);
-		}
-
-		//resetCam();
-		if (label != null)
-			label.setText("");
-	}
-
 
 	private void onFontLoaded(BitmapFont font) {
 		stage = new Stage(new ScreenViewport());
@@ -317,16 +292,14 @@ public class ModelPreviewApp extends ApplicationAdapter {
 		resetCam();
 		if (stage != null)
 			stage.getViewport().update(width, height, true);
-
-
 	}
 
 	@Override
 	public void dispose() {
 		if (modelBatch != null)
 			modelBatch.dispose();
-		if (model != null)
-			model.dispose();
+		for (Spatial s : spatials)
+			s.dispose();
 		if (stage != null)
 			stage.dispose();
 		if (assetManager != null)
